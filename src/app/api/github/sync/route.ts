@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
-import { GitHubClient } from '@/lib/github'
+import { GitHubClient, GitHubRepo } from '@/lib/github'
 
 export async function POST() {
   const session = await getServerSession(authOptions)
@@ -19,11 +19,8 @@ export async function POST() {
   const startTime = Date.now()
   const github = new GitHubClient(user.githubAccessToken)
 
-  try {
-    const ghRepos = await github.getAllRepositories()
-    let synced = 0
-
-    for (const repo of ghRepos) {
+  async function syncRepo(repo: GitHubRepo): Promise<{ success: boolean; repo: string; error?: string }> {
+    try {
       const [owner, repoName] = repo.full_name.split('/')
       const [languages, readme, deps] = await Promise.all([
         github.getRepositoryLanguages(owner, repoName),
@@ -99,11 +96,64 @@ export async function POST() {
           parentFullName: repo.parent?.full_name || null,
         },
       })
-      synced++
+
+      return { success: true, repo: repo.full_name }
+    } catch (error) {
+      return { success: false, repo: repo.full_name, error: String(error) }
+    }
+  }
+
+  async function processBatch(repos: GitHubRepo[], batchNum: number, totalBatches: number): Promise<{ synced: number; failed: number }> {
+    console.log(`[Sync] Processing batch ${batchNum}/${totalBatches} (${repos.length} repos)`)
+    
+    const results = await Promise.allSettled(repos.map(repo => syncRepo(repo)))
+    
+    let synced = 0
+    let failed = 0
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value.success) {
+        synced++
+      } else {
+        failed++
+        const error = result.status === 'rejected' ? result.reason : result.value.error
+        console.error(`[Sync] Failed to sync ${repos[i]?.full_name}:`, error)
+      }
+    })
+    
+    console.log(`[Sync] Batch ${batchNum} complete: ${synced} synced, ${failed} failed`)
+    return { synced, failed }
+  }
+
+  try {
+    const ghRepos = await github.getAllRepositories()
+    console.log(`[Sync] Found ${ghRepos.length} repositories to sync`)
+
+    const BATCH_SIZE = 10
+    const batches: GitHubRepo[][] = []
+    for (let i = 0; i < ghRepos.length; i += BATCH_SIZE) {
+      batches.push(ghRepos.slice(i, i + BATCH_SIZE))
     }
 
+    const totalBatches = batches.length
+    let totalSynced = 0
+    let totalFailed = 0
+
+    for (let i = 0; i < batches.length; i++) {
+      const { synced, failed } = await processBatch(batches[i], i + 1, totalBatches)
+      totalSynced += synced
+      totalFailed += failed
+
+      if (i < batches.length - 1) {
+        await github.handleRateLimit()
+      }
+    }
+
+    console.log(`[Sync] Complete: ${totalSynced} synced, ${totalFailed} failed in ${Date.now() - startTime}ms`)
+
     return NextResponse.json({
-      synced,
+      synced: totalSynced,
+      failed: totalFailed,
+      total: ghRepos.length,
       duration: Date.now() - startTime,
       status: 'complete',
     })

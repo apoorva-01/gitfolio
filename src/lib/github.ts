@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest'
 import { decrypt } from './encryption'
 
-interface GitHubRepo {
+export interface GitHubRepo {
   id: number
   name: string
   full_name: string
@@ -43,7 +43,7 @@ export class GitHubClient {
     this.octokit = new Octokit({ auth: decryptedToken })
   }
 
-  private async handleRateLimit(): Promise<void> {
+  async handleRateLimit(): Promise<void> {
     const response = await this.octokit.repos.get({ owner: 'octocat', repo: 'Hello-World' }).catch(() => null)
     const remaining = Number(response?.headers['x-ratelimit-remaining'] ?? 5000)
     const reset = Number(response?.headers['x-ratelimit-reset'] ?? 0)

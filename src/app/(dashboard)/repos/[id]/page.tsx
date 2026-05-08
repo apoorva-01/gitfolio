@@ -41,110 +41,110 @@ export default function RepoDetailPage() {
   return (
     <ErrorBoundary>
       <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-white">{repo.name}</h1>
-            {repo.isPrivate && <Badge variant="default"><Lock className="w-3 h-3 mr-1" /> Private</Badge>}
-            {repo.isFork && <Badge variant="default"><ForkIcon className="w-3 h-3 mr-1" /> Fork</Badge>}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-bold text-white">{repo.name}</h1>
+              {repo.isPrivate && <Badge variant="default"><Lock className="w-3 h-3 mr-1" /> Private</Badge>}
+              {repo.isFork && <Badge variant="default"><ForkIcon className="w-3 h-3 mr-1" /> Fork</Badge>}
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-400">
+              <a href={`https://github.com/${repo.fullName}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-400">
+                <ExternalLink className="w-4 h-4" /> {repo.fullName}
+              </a>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            <a href={`https://github.com/${repo.fullName}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-400">
-              <ExternalLink className="w-4 h-4" /> {repo.fullName}
-            </a>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <ProgressRing progress={repo.healthScore} size={64} />
+              <p className={`text-sm font-medium mt-1 ${healthColor}`}>Health</p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-center">
-            <ProgressRing progress={repo.healthScore} size={64} />
-            <p className={`text-sm font-medium mt-1 ${healthColor}`}>Health</p>
+
+        <div className="flex flex-wrap gap-3">
+          <Badge variant="info" className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLangColor(repo.language) }} />
+            {repo.language || 'Unknown'}
+          </Badge>
+          <Badge variant="default" className="flex items-center gap-1">
+            <Star className="w-3 h-3" /> {repo.stargazersCount} stars
+          </Badge>
+          <Badge variant="default" className="flex items-center gap-1">
+            <GitFork className="w-3 h-3" /> {repo.forksCount} forks
+          </Badge>
+          <Badge variant="default" className="flex items-center gap-1">
+            <Eye className="w-3 h-3" /> {repo.openIssuesCount} issues
+          </Badge>
+          <span className="text-sm text-gray-500">Updated {formatRelativeTime(repo.pushedAt)}</span>
+        </div>
+
+        {repo.topics?.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {repo.topics.map((topic: string) => (
+              <span key={topic} className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="border-b border-gray-800">
+          <div className="flex gap-4">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-emerald-500 text-emerald-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
+
+        {activeTab === 'analysis' && (
+          <AnalysisTab
+            repoId={id}
+            analysis={existingAnalysis}
+            isAnalyzing={isAnalyzing}
+            onAnalyze={() => analyze(id)}
+          />
+        )}
+
+        {activeTab === 'readme' && (
+          <ReadmeTab
+            readme={repo.readme}
+            generatedReadme={generatedReadme}
+            onGenerate={async () => {
+              const res = await fetch('/api/ai/generate-readme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repoId: id }),
+              })
+              const data = await res.json()
+              setGeneratedReadme(data.readme)
+            }}
+          />
+        )}
+
+        {activeTab === 'dependencies' && (
+          <DependenciesTab dependencies={repo.dependencies} />
+        )}
+
+        {activeTab === 'raw' && (
+          <Card>
+            <pre className="text-sm text-gray-300 overflow-auto max-h-96">
+              {JSON.stringify(repo, null, 2)}
+            </pre>
+          </Card>
+        )}
       </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Badge variant="info" className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLangColor(repo.language) }} />
-          {repo.language || 'Unknown'}
-        </Badge>
-        <Badge variant="default" className="flex items-center gap-1">
-          <Star className="w-3 h-3" /> {repo.stargazersCount} stars
-        </Badge>
-        <Badge variant="default" className="flex items-center gap-1">
-          <GitFork className="w-3 h-3" /> {repo.forksCount} forks
-        </Badge>
-        <Badge variant="default" className="flex items-center gap-1">
-          <Eye className="w-3 h-3" /> {repo.openIssuesCount} issues
-        </Badge>
-        <span className="text-sm text-gray-500">Updated {formatRelativeTime(repo.pushedAt)}</span>
-      </div>
-
-      {repo.topics?.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {repo.topics.map((topic: string) => (
-            <span key={topic} className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
-              {topic}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="border-b border-gray-800">
-        <div className="flex gap-4">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-emerald-500 text-emerald-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {activeTab === 'analysis' && (
-        <AnalysisTab
-          repoId={id}
-          analysis={existingAnalysis}
-          isAnalyzing={isAnalyzing}
-          onAnalyze={() => analyze(id)}
-        />
-      )}
-
-      {activeTab === 'readme' && (
-        <ReadmeTab
-          readme={repo.readme}
-          generatedReadme={generatedReadme}
-          onGenerate={async () => {
-            const res = await fetch('/api/ai/generate-readme', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ repoId: id }),
-            })
-            const data = await res.json()
-            setGeneratedReadme(data.readme)
-          }}
-        />
-      )}
-
-      {activeTab === 'dependencies' && (
-        <DependenciesTab dependencies={repo.dependencies} />
-      )}
-
-      {activeTab === 'raw' && (
-        <Card>
-          <pre className="text-sm text-gray-300 overflow-auto max-h-96">
-            {JSON.stringify(repo, null, 2)}
-          </pre>
-        </Card>
-      )}
-      </ErrorBoundary>
-    </div>
+    </ErrorBoundary>
   )
 }
 

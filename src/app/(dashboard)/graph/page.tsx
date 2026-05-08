@@ -3,10 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useGraphData, useRebuildGraph } from '@/hooks/useGraph'
 import { useRepositories } from '@/hooks/useRepositories'
-import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Input'
-import { ProgressRing } from '@/components/ui/ProgressRing'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import {
   ReactFlow,
@@ -88,7 +85,6 @@ export default function GraphPage() {
   const [showPrivate, setShowPrivate] = useState(true)
   const [showForks, setShowForks] = useState(true)
   const [minHealth, setMinHealth] = useState(0)
-  const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -161,81 +157,81 @@ export default function GraphPage() {
     <ErrorBoundary>
       <div className="h-[calc(100vh-120px)] flex flex-col">
         <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Your Code Universe</h1>
-          {stats && (
-            <p className="text-sm text-gray-400">
-              {stats.totalNodes} nodes · {stats.totalEdges} edges · {stats.languageCount} languages · avg health {stats.avgHealth.toFixed(0)}
-            </p>
-          )}
+          <div>
+            <h1 className="text-2xl font-bold text-white">Your Code Universe</h1>
+            {stats && (
+              <p className="text-sm text-gray-400">
+                {stats.totalNodes} nodes · {stats.totalEdges} edges · {stats.languageCount} languages · avg health {stats.avgHealth.toFixed(0)}
+              </p>
+            )}
+          </div>
+          <Button onClick={() => rebuildGraph()} disabled={isRebuilding}>
+            <RefreshCw className={cn('w-4 h-4 mr-2', isRebuilding && 'animate-spin')} />
+            {isRebuilding ? 'Building...' : 'Rebuild Graph'}
+          </Button>
         </div>
-        <Button onClick={() => rebuildGraph()} disabled={isRebuilding}>
-          <RefreshCw className={cn('w-4 h-4 mr-2', isRebuilding && 'animate-spin')} />
-          {isRebuilding ? 'Building...' : 'Rebuild Graph'}
-        </Button>
-      </div>
 
-      <div className="flex gap-4 mb-4">
-        <label className="flex items-center gap-2 text-sm text-gray-400">
-          <input type="checkbox" checked={showPrivate} onChange={e => setShowPrivate(e.target.checked)} />
-          Show Private
-        </label>
-        <label className="flex items-center gap-2 text-sm text-gray-400">
-          <input type="checkbox" checked={showForks} onChange={e => setShowForks(e.target.checked)} />
-          Show Forks
-        </label>
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <span>Min Health:</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={minHealth}
-            onChange={e => setMinHealth(parseInt(e.target.value))}
-            className="w-24"
-          />
-          <span>{minHealth}</span>
-        </div>
-      </div>
-
-      <div className="flex-1 rounded-lg border border-gray-800 overflow-hidden">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          className="bg-gray-950"
-        >
-          <Background color="#1f2937" gap={20} />
-          <Controls />
-          {nodes.length > 50 && <MiniMap nodeColor={n => LANGUAGE_COLORS[n.data?.language] || DEFAULT_NODE_COLOR} />}
-        </ReactFlow>
-      </div>
-
-      {stats && (
-        <div className="absolute bottom-4 right-4 bg-gray-900/90 backdrop-blur border border-gray-800 rounded-lg p-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-500">Total Repos</p>
-              <p className="text-lg font-bold text-white">{repos.length}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Languages</p>
-              <p className="text-lg font-bold text-white">{stats.languageCount}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Avg Health</p>
-              <p className="text-lg font-bold text-white">{stats.avgHealth.toFixed(0)}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Connections</p>
-              <p className="text-lg font-bold text-white">{stats.totalEdges}</p>
-            </div>
+        <div className="flex gap-4 mb-4">
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            <input type="checkbox" checked={showPrivate} onChange={e => setShowPrivate(e.target.checked)} />
+            Show Private
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            <input type="checkbox" checked={showForks} onChange={e => setShowForks(e.target.checked)} />
+            Show Forks
+          </label>
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>Min Health:</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={minHealth}
+              onChange={e => setMinHealth(parseInt(e.target.value))}
+              className="w-24"
+            />
+            <span>{minHealth}</span>
           </div>
         </div>
-      )}
+
+        <div className="flex-1 rounded-lg border border-gray-800 overflow-hidden">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            fitView
+            className="bg-gray-950"
+          >
+            <Background color="#1f2937" gap={20} />
+            <Controls />
+            {nodes.length > 50 && <MiniMap nodeColor={n => LANGUAGE_COLORS[n.data?.language] || DEFAULT_NODE_COLOR} />}
+          </ReactFlow>
+        </div>
+
+        {stats && (
+          <div className="absolute bottom-4 right-4 bg-gray-900/90 backdrop-blur border border-gray-800 rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Total Repos</p>
+                <p className="text-lg font-bold text-white">{repos.length}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Languages</p>
+                <p className="text-lg font-bold text-white">{stats.languageCount}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Avg Health</p>
+                <p className="text-lg font-bold text-white">{stats.avgHealth.toFixed(0)}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Connections</p>
+                <p className="text-lg font-bold text-white">{stats.totalEdges}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   )

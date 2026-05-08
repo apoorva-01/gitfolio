@@ -14,8 +14,8 @@ function LoginContent() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold mb-2">
-            <span className="text-white">Repo</span>
-            <span className="text-emerald-500">Mind</span>
+            <span className="text-white">Git</span>
+            <span className="text-emerald-500">Folio</span>
           </h1>
           <p className="text-gray-400 text-lg">Your GitHub portfolio builder</p>
         </div>

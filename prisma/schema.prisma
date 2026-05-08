@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String          @id @default(cuid())
+  email                String          @unique
+  name                 String?
+  image                String?
+  githubLogin          String          @unique
+  githubAccessToken    String?
+  hasCompletedOnboarding Boolean       @default(false)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  repositories         Repository[]
+  analyses             RepoAnalysis[]
+  profileAnalyses      ProfileAnalysis[]
+  graphSnapshots       GraphSnapshot[]
+}
+
+model Repository {
+  id                String          @id @default(cuid())
+  githubId         Int             @unique
+  name              String
+  fullName          String
+  description       String?
+  language          String?
+  languages         Json?
+  isPrivate         Boolean         @default(false)
+  isFork            Boolean         @default(false)
+  stargazersCount   Int             @default(0)
+  forksCount        Int             @default(0)
+  watchersCount    Int             @default(0)
+  openIssuesCount  Int             @default(0)
+  topics            String[]
+  hasReadme         Boolean         @default(false)
+  hasLicense        Boolean         @default(false)
+  licenseType       String?
+  lastCommitAt      DateTime?
+  createdAt         DateTime        @default(now())
+  pushedAt          DateTime?
+  defaultBranch     String?
+  userId            String
+  dependencies      Json?
+  readme            String?
+  healthScore       Float           @default(50)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentFullName    String?
+  analyses          RepoAnalysis[]
+}
+
+model RepoAnalysis {
+  id               String      @id @default(cuid())
+  repositoryId     String
+  userId           String
+  summary          String?
+  strengths        Json?
+  issues           Json?
+  readmeSuggestion String?
+  suggestedTopics  Json?
+  suggestedDescription String?
+  recruiterImpact  String?
+  estimatedImprovementScore Float?
+  aiSuggestions    Json?
+  healthScore      Float?
+  missingItems     Json?
+  analyzedAt       DateTime   @default(now())
+  repository       Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProfileAnalysis {
+  id                    String      @id @default(cuid())
+  userId                String
+  overallScore          Float?
+  suggestions           Json?
+  skillMap              Json?
+  languageDistribution  Json?
+  developerArchetype    String?
+  topStrengths          Json?
+  criticalGaps          Json?
+  profileBioSuggestion  String?
+  pinnedRepoRecommendations Json?
+  careerNarrative       String?
+  topImprovements       Json?
+  recruiterReadinessScore Float?
+  analyzedAt            DateTime    @default(now())
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GraphSnapshot {
+  id         String      @id @default(cuid())
+  userId     String
+  nodes      Json
+  edges      Json
+  createdAt  DateTime    @default(now())
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

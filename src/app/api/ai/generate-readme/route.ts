@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { z } from 'zod'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import { generateReadme } from '@/lib/ai'
+import { generateReadmeSchema } from '@/lib/validations'
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -11,7 +13,22 @@ export async function POST(request: Request) {
   }
 
   const userId = (session.user as { id: string }).id
-  const { repoId } = await request.json()
+
+  let body: { repoId: string }
+  try {
+    body = generateReadmeSchema.parse(await request.json())
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const zodError = error as z.ZodError
+      return NextResponse.json(
+        { error: 'Validation failed', details: zodError.errors },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
+
+  const { repoId } = body
 
   const repo = await prisma.repository.findFirst({ where: { id: repoId, userId } })
   if (!repo) {

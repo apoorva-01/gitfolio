@@ -130,11 +130,26 @@ interface UseAnalysisStore {
   setIsAnalyzing: (analyzing: boolean) => void
 }
 
+interface NotificationSettings {
+  analysisNotifications: boolean
+  criticalIssueAlerts: boolean
+}
+
+interface GraphPreferences {
+  defaultLayout: 'force' | 'dagre' | 'manual'
+  showPrivateByDefault: boolean
+  dynamicNodeSizing: boolean
+}
+
 interface UseUIStore {
   sidebarCollapsed: boolean
   onboardingComplete: boolean
+  notifications: NotificationSettings
+  graphPreferences: GraphPreferences
   toggleSidebar: () => void
   setOnboardingComplete: (complete: boolean) => void
+  setNotification: (key: keyof NotificationSettings, value: boolean) => void
+  setGraphPreference: (key: keyof GraphPreferences, value: any) => void
 }
 
 const defaultFilters: RepoFilters = {
@@ -229,8 +244,23 @@ export const useUIStore = create<UseUIStore>()(
     (set) => ({
       sidebarCollapsed: false,
       onboardingComplete: false,
+      notifications: {
+        analysisNotifications: true,
+        criticalIssueAlerts: true,
+      },
+      graphPreferences: {
+        defaultLayout: 'force',
+        showPrivateByDefault: true,
+        dynamicNodeSizing: false,
+      },
       toggleSidebar: () => set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setOnboardingComplete: (onboardingComplete) => set({ onboardingComplete }),
+      setNotification: (key, value) => set(state => ({
+        notifications: { ...state.notifications, [key]: value }
+      })),
+      setGraphPreference: (key, value) => set(state => ({
+        graphPreferences: { ...state.graphPreferences, [key]: value }
+      })),
     }),
     { name: 'ui-store' }
   )

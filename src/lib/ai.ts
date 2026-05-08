@@ -4,6 +4,73 @@ import { prisma } from './db'
 
 const anthropic = new Anthropic()
 
+const REPO_EXPECTED_KEYS = ['summary', 'strengths', 'issues', 'readmeSuggestion', 'suggestedTopics', 'suggestedDescription', 'recruiterImpact', 'estimatedImprovementScore']
+const PROFILE_EXPECTED_KEYS = ['overallScore', 'developerArchetype', 'topStrengths', 'criticalGaps', 'profileBioSuggestion', 'pinnedRepoRecommendations', 'skillMap', 'careerNarrative', 'topImprovements', 'recruiterReadinessScore']
+
+function extractJSON(text: string, expectedKeys: string[]): object | null {
+  const findMatchingBracket = (startIndex: number): number | null => {
+    let depth = 0
+    let inString = false
+    let escapeNext = false
+
+    for (let i = startIndex; i < text.length; i++) {
+      const char = text[i]
+
+      if (escapeNext) {
+        escapeNext = false
+        continue
+      }
+
+      if (char === '\\') {
+        escapeNext = true
+        continue
+      }
+
+      if (char === '"') {
+        inString = !inString
+        continue
+      }
+
+      if (inString) continue
+
+      if (char === '{') depth++
+      else if (char === '}') {
+        depth--
+        if (depth === 0) return i
+      }
+    }
+    return null
+  }
+
+  const firstBrace = text.indexOf('{')
+  if (firstBrace === -1) return null
+
+  const endBrace = findMatchingBracket(firstBrace)
+  if (endBrace === null) return null
+
+  const jsonStr = text.slice(firstBrace, endBrace + 1)
+
+  try {
+    const parsed = JSON.parse(jsonStr)
+    const hasKeys = expectedKeys.some(key => key in parsed)
+    if (!hasKeys) return null
+    return parsed
+  } catch {
+    const fallbackMatch = text.match(/\{[\s\S]*\}/)
+    if (fallbackMatch) {
+      try {
+        const parsed = JSON.parse(fallbackMatch[0])
+        const hasKeys = expectedKeys.some(key => key in parsed)
+        if (!hasKeys) return null
+        return parsed
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
+}
+
 interface RepoAnalysisResult {
   summary: string
   strengths: string[]
@@ -66,10 +133,10 @@ Return JSON with this exact shape:
   })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('Invalid AI response')
-  
-  return JSON.parse(jsonMatch[0]) as RepoAnalysisResult
+  const parsed = extractJSON(text, REPO_EXPECTED_KEYS)
+  if (!parsed) throw new Error('Invalid AI response: no valid JSON found')
+
+  return parsed as RepoAnalysisResult
 }
 
 interface ProfileAnalysisResult {
@@ -152,10 +219,10 @@ Return JSON:
   })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('Invalid AI response')
-  
-  return JSON.parse(jsonMatch[0]) as ProfileAnalysisResult
+  const parsed = extractJSON(text, PROFILE_EXPECTED_KEYS)
+  if (!parsed) throw new Error('Invalid AI response: no valid JSON found')
+
+  return parsed as ProfileAnalysisResult
 }
 
 export async function generateReadme(repoId: string): Promise<string> {

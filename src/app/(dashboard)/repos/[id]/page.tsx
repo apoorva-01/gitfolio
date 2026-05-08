@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Input'
 import { ProgressRing } from '@/components/ui/ProgressRing'
 import { AnalysisSkeleton } from '@/components/ui/skeletons'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { formatRelativeTime } from '@/lib/utils'
 import { Star, GitFork, Eye, ExternalLink, Lock, GitFork as ForkIcon, Zap } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -38,7 +39,8 @@ export default function RepoDetailPage() {
   const healthColor = repo.healthScore >= 70 ? 'text-emerald-500' : repo.healthScore >= 40 ? 'text-yellow-500' : 'text-red-500'
 
   return (
-    <div className="space-y-6">
+    <ErrorBoundary>
+      <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -141,6 +143,7 @@ export default function RepoDetailPage() {
           </pre>
         </Card>
       )}
+      </ErrorBoundary>
     </div>
   )
 }

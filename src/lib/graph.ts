@@ -69,25 +69,93 @@ export async function buildGraphData(userId: string): Promise<GraphData> {
 
   const edges: GraphEdge[] = []
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
+  const edgeCountPerNode = new Map<string, number>()
+  const MAX_EDGES_PER_NODE = 20
 
-  for (let i = 0; i < repos.length; i++) {
-    for (let j = i + 1; j < repos.length; j++) {
-      const r1 = repos[i]
-      const r2 = repos[j]
+  const addEdge = (edge: GraphEdge): boolean => {
+    const sourceCount = edgeCountPerNode.get(edge.source) || 0
+    const targetCount = edgeCountPerNode.get(edge.target) || 0
+    if (sourceCount >= MAX_EDGES_PER_NODE || targetCount >= MAX_EDGES_PER_NODE) {
+      return false
+    }
+    edges.push(edge)
+    edgeCountPerNode.set(edge.source, sourceCount + 1)
+    edgeCountPerNode.set(edge.target, targetCount + 1)
+    return true
+  }
 
-      if (r1.parentFullName && r1.parentFullName === r2.fullName) {
-        edges.push({ id: `fork-${r2.githubId}-${r1.githubId}`, source: r2.githubId.toString(), target: r1.githubId.toString(), type: 'fork-of', weight: 5 })
-      } else if (r2.parentFullName && r2.parentFullName === r1.fullName) {
-        edges.push({ id: `fork-${r1.githubId}-${r2.githubId}`, source: r1.githubId.toString(), target: r2.githubId.toString(), type: 'fork-of', weight: 5 })
-      } else {
-        const deps1 = new Set(Object.keys((r1.dependencies as Record<string, string>) || {}))
-        const deps2 = new Set(Object.keys((r2.dependencies as Record<string, string>) || {}))
-        const sharedDeps = [...deps1].filter(d => deps2.has(d))
-        if (sharedDeps.length >= 2) {
-          edges.push({ id: `dep-${r1.githubId}-${r2.githubId}`, source: r1.githubId.toString(), target: r2.githubId.toString(), type: 'shared-dependency', weight: sharedDeps.length })
-        } else if (r1.language === r2.language && r1.healthScore > 30 && r2.healthScore > 30) {
-          edges.push({ id: `lang-${r1.githubId}-${r2.githubId}`, source: r1.githubId.toString(), target: r2.githubId.toString(), type: 'same-language', weight: 1 })
+  const parentToFork = new Map<string, { repo: typeof repos[0], githubId: string }[]>()
+  for (const repo of repos) {
+    if (repo.parentFullName) {
+      const existing = parentToFork.get(repo.parentFullName) || []
+      existing.push({ repo, githubId: repo.githubId.toString() })
+      parentToFork.set(repo.parentFullName, existing)
+    }
+  }
+
+  for (const repo of repos) {
+    const forks = parentToFork.get(repo.fullName)
+    if (forks) {
+      for (const fork of forks) {
+        addEdge({
+          id: `fork-${repo.githubId}-${fork.githubId}`,
+          source: repo.githubId.toString(),
+          target: fork.githubId.toString(),
+          type: 'fork-of',
+          weight: 5
+        })
+      }
+    }
+  }
+
+  const depsToRepos = new Map<string, string[]>()
+  for (const repo of repos) {
+    const deps = Object.keys((repo.dependencies as Record<string, string>) || {})
+    if (deps.length >= 2) {
+      const key = deps.slice().sort().join('|')
+      const existing = depsToRepos.get(key) || []
+      existing.push(repo.githubId.toString())
+      depsToRepos.set(key, existing)
+    }
+  }
+
+  for (const [key, repoIds] of depsToRepos) {
+    if (repoIds.length >= 2) {
+      const weight = key.split('|').length
+      for (let i = 0; i < repoIds.length && (edgeCountPerNode.get(repoIds[i]) || 0) < MAX_EDGES_PER_NODE; i++) {
+        for (let j = i + 1; j < repoIds.length && (edgeCountPerNode.get(repoIds[j]) || 0) < MAX_EDGES_PER_NODE; j++) {
+          if (!addEdge({
+            id: `dep-${repoIds[i]}-${repoIds[j]}`,
+            source: repoIds[i],
+            target: repoIds[j],
+            type: 'shared-dependency',
+            weight
+          })) break
         }
+      }
+    }
+  }
+
+  const langToRepos = new Map<string, { id: string, health: number }[]>()
+  for (const repo of repos) {
+    if (repo.language && repo.healthScore > 30) {
+      const existing = langToRepos.get(repo.language) || []
+      existing.push({ id: repo.githubId.toString(), health: repo.healthScore })
+      langToRepos.set(repo.language, existing)
+    }
+  }
+
+  for (const [, repoList] of langToRepos) {
+    const sorted = repoList.sort((a, b) => b.health - a.health).slice(0, 50)
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        if (!addEdge({
+          id: `lang-${sorted[i].id}-${sorted[j].id}`,
+          source: sorted[i].id,
+          target: sorted[j].id,
+          type: 'same-language',
+          weight: 1
+        })) break
       }
     }
   }

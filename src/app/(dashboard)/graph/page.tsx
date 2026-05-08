@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Input'
 import { ProgressRing } from '@/components/ui/ProgressRing'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import {
   ReactFlow,
   Node,
@@ -157,8 +158,9 @@ export default function GraphPage() {
   if (!mounted) return <div className="h-[80vh] bg-gray-900 rounded-lg animate-pulse" />
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+    <ErrorBoundary>
+      <div className="h-[calc(100vh-120px)] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Your Code Universe</h1>
           {stats && (
@@ -234,7 +236,8 @@ export default function GraphPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }
 

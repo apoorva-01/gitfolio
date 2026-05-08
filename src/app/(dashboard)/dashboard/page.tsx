@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Input'
 import { ProgressRing } from '@/components/ui/ProgressRing'
 import { DashboardSkeleton } from '@/components/ui/skeletons'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useRepositories, useSyncRepos } from '@/hooks/useRepositories'
 import { useProfileAnalysis, useAnalyzProfile } from '@/hooks/useAnalysis'
 import { useSyncStatus } from '@/hooks/useRepositories'
@@ -56,7 +57,8 @@ export default function DashboardPage() {
   if (isLoading) return <DashboardSkeleton />
 
   return (
-    <div className="space-y-6">
+    <ErrorBoundary>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <Button onClick={() => syncRepos()} disabled={isSyncing}>
@@ -246,6 +248,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </Card>
+      </ErrorBoundary>
     </div>
   )
 }

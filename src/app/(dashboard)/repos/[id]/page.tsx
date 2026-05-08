@@ -11,6 +11,7 @@ import { ProgressRing } from '@/components/ui/ProgressRing'
 import { AnalysisSkeleton } from '@/components/ui/skeletons'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { formatRelativeTime } from '@/lib/utils'
+import { getLanguageColor } from '@/lib/languages'
 import { Star, GitFork, Eye, ExternalLink, Lock, GitFork as ForkIcon, Zap } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 
@@ -64,7 +65,7 @@ export default function RepoDetailPage() {
 
         <div className="flex flex-wrap gap-3">
           <Badge variant="info" className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLangColor(repo.language) }} />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLanguageColor(repo.language) }} />
             {repo.language || 'Unknown'}
           </Badge>
           <Badge variant="default" className="flex items-center gap-1">
@@ -121,13 +122,18 @@ export default function RepoDetailPage() {
             readme={repo.readme}
             generatedReadme={generatedReadme}
             onGenerate={async () => {
-              const res = await fetch('/api/ai/generate-readme', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ repoId: id }),
-              })
-              const data = await res.json()
-              setGeneratedReadme(data.readme)
+              setIsGenerating(true)
+              try {
+                const res = await fetch('/api/ai/generate-readme', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ repoId: id }),
+                })
+                const data = await res.json()
+                setGeneratedReadme(data.readme)
+              } finally {
+                setIsGenerating(false)
+              }
             }}
           />
         )}
@@ -257,13 +263,16 @@ function AnalysisTab({ repoId, analysis, isAnalyzing, onAnalyze }: { repoId: str
 }
 
 function ReadmeTab({ readme, generatedReadme, onGenerate }: { readme: string | null; generatedReadme: string | null; onGenerate: () => void }) {
+  const [isGenerating, setIsGenerating] = useState(false)
   const content = readme || generatedReadme
 
   if (!content) {
     return (
       <Card className="text-center py-12">
         <p className="text-gray-400 mb-4">No README found for this repository</p>
-        <Button onClick={onGenerate}>Generate README with AI</Button>
+        <Button onClick={onGenerate} disabled={isGenerating}>
+          {isGenerating ? 'Generating...' : 'Generate README with AI'}
+        </Button>
       </Card>
     )
   }
@@ -324,12 +333,3 @@ function DependenciesTab({ dependencies }: { dependencies: Record<string, string
   )
 }
 
-function getLangColor(lang: string | null): string {
-  const colors: Record<string, string> = {
-    JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
-    Ruby: '#701516', Go: '#00ADD8', Rust: '#dea584', Java: '#b07219',
-    'C#': '#178600', PHP: '#4F5D95', Swift: '#F05138', Kotlin: '#A97BFF',
-    Dart: '#00B4AB', HTML: '#e34c26', CSS: '#563d7c', Shell: '#89e051',
-  }
-  return colors[lang || ''] || '#8b949e'
-}

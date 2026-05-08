@@ -4,6 +4,19 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/db'
 import { GitHubClient, GitHubRepo } from '@/lib/github'
 
+const HEALTH_WEIGHTS = {
+  HAS_README: 20,
+  README_LONG: 10,
+  HAS_DESCRIPTION: 10,
+  HAS_TOPICS: 10,
+  HAS_LICENSE: 15,
+  RECENT_COMMIT: 10,
+  HAS_ISSUES: 5,
+  HAS_STARS: 5,
+  NOT_FORK: 5,
+  HAS_DEPENDENCIES: 10,
+} as const
+
 export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
@@ -31,16 +44,16 @@ export async function POST() {
       const lastCommit = await github.getLastCommit(owner, repoName)
 
       let healthScore = 50
-      if (readme) healthScore += 20
-      if ((readme?.length || 0) > 200) healthScore += 10
-      if (repo.description) healthScore += 10
-      if (repo.topics && repo.topics.length >= 2) healthScore += 10
-      if (repo.license) healthScore += 15
-      if (lastCommit && Date.now() - lastCommit.getTime() < 180 * 24 * 60 * 60 * 1000) healthScore += 10
-      if (repo.open_issues_count > 0) healthScore += 5
-      if (repo.stargazers_count > 0) healthScore += 5
-      if (!repo.fork) healthScore += 5
-      if (Object.keys(deps).length > 0) healthScore += 10
+      if (readme) healthScore += HEALTH_WEIGHTS.HAS_README
+      if ((readme?.length || 0) > 200) healthScore += HEALTH_WEIGHTS.README_LONG
+      if (repo.description) healthScore += HEALTH_WEIGHTS.HAS_DESCRIPTION
+      if (repo.topics && repo.topics.length >= 2) healthScore += HEALTH_WEIGHTS.HAS_TOPICS
+      if (repo.license) healthScore += HEALTH_WEIGHTS.HAS_LICENSE
+      if (lastCommit && Date.now() - lastCommit.getTime() < 180 * 24 * 60 * 60 * 1000) healthScore += HEALTH_WEIGHTS.RECENT_COMMIT
+      if (repo.open_issues_count > 0) healthScore += HEALTH_WEIGHTS.HAS_ISSUES
+      if (repo.stargazers_count > 0) healthScore += HEALTH_WEIGHTS.HAS_STARS
+      if (!repo.fork) healthScore += HEALTH_WEIGHTS.NOT_FORK
+      if (Object.keys(deps).length > 0) healthScore += HEALTH_WEIGHTS.HAS_DEPENDENCIES
       healthScore = Math.min(100, healthScore)
 
       await prisma.repository.upsert({

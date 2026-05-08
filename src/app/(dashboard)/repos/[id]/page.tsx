@@ -25,6 +25,7 @@ export default function RepoDetailPage() {
   const { mutate: analyze, isPending: isAnalyzing } = useAnalyzeRepo()
   const [activeTab, setActiveTab] = useState<Tab>('analysis')
   const [generatedReadme, setGeneratedReadme] = useState<string | null>(null)
+  const [isGeneratingReadme, setIsGeneratingReadme] = useState(false)
 
   if (isLoading) return <AnalysisSkeleton />
 
@@ -121,8 +122,9 @@ export default function RepoDetailPage() {
           <ReadmeTab
             readme={repo.readme}
             generatedReadme={generatedReadme}
+            isGenerating={isGeneratingReadme}
             onGenerate={async () => {
-              setIsGenerating(true)
+              setIsGeneratingReadme(true)
               try {
                 const res = await fetch('/api/ai/generate-readme', {
                   method: 'POST',
@@ -132,7 +134,7 @@ export default function RepoDetailPage() {
                 const data = await res.json()
                 setGeneratedReadme(data.readme)
               } finally {
-                setIsGenerating(false)
+                setIsGeneratingReadme(false)
               }
             }}
           />
@@ -262,8 +264,7 @@ function AnalysisTab({ repoId, analysis, isAnalyzing, onAnalyze }: { repoId: str
   )
 }
 
-function ReadmeTab({ readme, generatedReadme, onGenerate }: { readme: string | null; generatedReadme: string | null; onGenerate: () => void }) {
-  const [isGenerating, setIsGenerating] = useState(false)
+function ReadmeTab({ readme, generatedReadme, isGenerating, onGenerate }: { readme: string | null; generatedReadme: string | null; isGenerating: boolean; onGenerate: () => void }) {
   const content = readme || generatedReadme
 
   if (!content) {

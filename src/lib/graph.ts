@@ -163,27 +163,6 @@ export async function buildGraphData(userId: string): Promise<GraphData> {
   return { nodes, edges }
 }
 
-export async function getGraphStats(userId: string) {
-  const { nodes, edges } = await buildGraphData(userId)
-  const groups = [...new Set(nodes.map(n => n.group))]
-  const avgHealth = nodes.length > 0 ? nodes.reduce((a, n) => a + n.health, 0) / nodes.length : 0
-  const mostConnected = edges.reduce((acc, e) => {
-    acc[e.source] = (acc[e.source] || 0) + 1
-    acc[e.target] = (acc[e.target] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-  const topNode = Object.entries(mostConnected).sort((a, b) => b[1] - a[1])[0]
-  const nodeMap = new Map(nodes.map(n => [n.id, n]))
-
-  return {
-    totalNodes: nodes.length,
-    totalEdges: edges.length,
-    languageClusters: groups.length,
-    avgHealth,
-    mostConnectedRepo: topNode ? nodeMap.get(topNode[0])?.label : null,
-  }
-}
-
 export async function saveGraphSnapshot(userId: string, graphData: GraphData) {
   return prisma.graphSnapshot.create({
     data: {

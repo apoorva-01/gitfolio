@@ -18,6 +18,7 @@ import {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { RefreshCw, Lock, GitFork } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const LANGUAGE_COLORS: Record<string, string> = {
   JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
@@ -237,6 +238,3 @@ export default function GraphPage() {
   )
 }
 
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ')
-}

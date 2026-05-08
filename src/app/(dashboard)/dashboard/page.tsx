@@ -9,7 +9,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useRepositories, useSyncRepos } from '@/hooks/useRepositories'
 import { useProfileAnalysis, useAnalyzProfile } from '@/hooks/useAnalysis'
 import { useSyncStatus } from '@/hooks/useRepositories'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, cn } from '@/lib/utils'
 import { Star, GitFork, AlertTriangle, RefreshCw, ArrowRight, Lock, Eye, Network } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useQuery } from '@tanstack/react-query'
@@ -253,6 +253,3 @@ export default function DashboardPage() {
   )
 }
 
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ')
-}

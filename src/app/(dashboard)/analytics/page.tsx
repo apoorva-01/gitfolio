@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/Input'
 import { ProgressRing } from '@/components/ui/ProgressRing'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Cell, PieChart, Pie } from 'recharts'
 import { GitFork as ForkIcon, Star, TrendingUp, Calendar, Activity } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { getLanguageColor } from '@/lib/languages'
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4']
 
@@ -152,7 +154,7 @@ export default function AnalyticsPage() {
                 />
                 <Scatter data={scatterData}>
                   {scatterData.map((entry, index) => (
-                    <Cell key={index} fill={getLangColor(entry.language)} />
+                    <Cell key={index} fill={getLanguageColor(entry.language)} />
                   ))}
                 </Scatter>
               </ScatterChart>
@@ -274,16 +276,6 @@ export default function AnalyticsPage() {
   )
 }
 
-function getLangColor(lang: string | null): string {
-  const colors: Record<string, string> = {
-    JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
-    Ruby: '#701516', Go: '#00ADD8', Rust: '#dea584', Java: '#b07219',
-    'C#': '#178600', PHP: '#4F5D95', Swift: '#F05138', Kotlin: '#A97BFF',
-    Dart: '#00B4AB', HTML: '#e34c26', CSS: '#563d7c', Shell: '#89e051',
-  }
-  return colors[lang || ''] || '#8b949e'
-}
 
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ')
-}
+
+

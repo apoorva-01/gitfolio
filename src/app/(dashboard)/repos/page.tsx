@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select, Badge } from '@/components/ui/Input'
 import { ProgressRing } from '@/components/ui/ProgressRing'
 import { RepoCardSkeleton } from '@/components/ui/skeletons'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, cn } from '@/lib/utils'
+import { getLanguageColor } from '@/lib/languages'
 import { Search, Filter, RefreshCw, Lock, GitFork, Star, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function ReposPage() {
@@ -145,7 +146,7 @@ function RepoCard({ repo }: { repo: any }) {
 
       <div className="flex items-center gap-3 mb-3">
         <Badge variant="default" className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLangColor(repo.language) }} />
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLanguageColor(repo.language) }} />
           {repo.language || 'Unknown'}
         </Badge>
         <span className="flex items-center gap-1 text-sm text-gray-400">
@@ -173,16 +174,6 @@ function RepoCard({ repo }: { repo: any }) {
   )
 }
 
-function getLangColor(lang: string | null): string {
-  const colors: Record<string, string> = {
-    JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
-    Ruby: '#701516', Go: '#00ADD8', Rust: '#dea584', Java: '#b07219',
-    'C#': '#178600', PHP: '#4F5D95', Swift: '#F05138', Kotlin: '#A97BFF',
-    Dart: '#00B4AB', HTML: '#e34c26', CSS: '#563d7c', Shell: '#89e051',
-  }
-  return colors[lang || ''] || '#8b949e'
-}
 
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ')
-}
+
+

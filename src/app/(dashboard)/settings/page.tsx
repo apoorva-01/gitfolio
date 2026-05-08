@@ -144,8 +144,8 @@ export default function SettingsPage() {
           <CardTitle>About</CardTitle>
         </CardHeader>
         <div className="space-y-2 text-sm text-gray-400">
-          <p><span className="text-white">RepoMind</span> v1.0.0</p>
-          <p>Your personal GitHub intelligence dashboard</p>
+          <p><span className="text-white">GitFolio</span> v1.0.0</p>
+          <p>Your GitHub portfolio builder</p>
           <p className="text-xs mt-4 text-gray-500">
             Built with Next.js, Prisma, React Flow, and Claude AI
           </p>

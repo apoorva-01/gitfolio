@@ -6,7 +6,7 @@ services:
     ports:
       - "5162:5162"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/repomind
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/gitfolio
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
@@ -22,7 +22,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=repomind
+      - POSTGRES_DB=gitfolio
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:

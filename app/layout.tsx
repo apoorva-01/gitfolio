@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "RepoMind - GitHub Intelligence Dashboard",
+  title: "GitFolio - Your GitHub Portfolio Builder",
   description: "Map your codebase, analyze your profile, and improve your GitHub presence with AI-powered insights",
 }
 

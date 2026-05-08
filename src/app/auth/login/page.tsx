@@ -17,7 +17,7 @@ function LoginContent() {
             <span className="text-white">Repo</span>
             <span className="text-emerald-500">Mind</span>
           </h1>
-          <p className="text-gray-400 text-lg">Your GitHub intelligence layer</p>
+          <p className="text-gray-400 text-lg">Your GitHub portfolio builder</p>
         </div>
 
         <div className="rounded-xl border border-gray-800 bg-gray-900/80 backdrop-blur p-8">

@@ -70,7 +70,7 @@ export default function OnboardingPage() {
               <User className="w-10 h-10 text-emerald-400" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Welcome, {session?.user?.name}!</h2>
-            <p className="text-gray-400 mb-8">Let's set up your GitHub intelligence dashboard</p>
+            <p className="text-gray-400 mb-8">Let's set up your GitHub portfolio</p>
             <Button onClick={startSync} size="lg">
               Let's Get Started <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       const zodError = error as z.ZodError
       return NextResponse.json(
-        { error: 'Validation failed', details: zodError.errors },
+        { error: 'Validation failed', details: zodError.issues },
         { status: 400 }
       )
     }

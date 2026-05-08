@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest'
+import { decrypt } from './encryption'
 
 interface GitHubRepo {
   id: number
@@ -38,7 +39,8 @@ export class GitHubClient {
   private octokit: Octokit
 
   constructor(accessToken: string) {
-    this.octokit = new Octokit({ auth: accessToken })
+    const decryptedToken = decrypt(accessToken, process.env.ENCRYPTION_KEY!)
+    this.octokit = new Octokit({ auth: decryptedToken })
   }
 
   private async handleRateLimit(): Promise<void> {

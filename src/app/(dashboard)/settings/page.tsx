@@ -4,7 +4,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Input'
-import { Link, Trash2, RefreshCw, Bell, Database } from 'lucide-react'
+import { Link2, Trash2, Bell, Database } from 'lucide-react'
 import { useState } from 'react'
 import { useUIStore } from '@/store'
 
@@ -31,11 +31,11 @@ export default function SettingsPage() {
         </CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src={session?.user?.image || ''} alt="" className="w-12 h-12 rounded-full" />
+            <img src={session?.user?.image || ''} alt={session?.user?.name || 'User avatar'} className="w-12 h-12 rounded-full" />
             <div>
               <p className="text-white font-medium">{session?.user?.name}</p>
               <p className="text-sm text-gray-400 flex items-center gap-2">
-                <Link className="w-4 h-4" />
+                <Link2 className="w-4 h-4" />
                 {(session?.user as any)?.githubLogin || 'Not connected'}
               </p>
             </div>

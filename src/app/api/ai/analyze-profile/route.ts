@@ -17,7 +17,7 @@ export async function POST() {
     orderBy: { analyzedAt: 'desc' },
   })
 
-  if (existing && Date.now() - existing.analyzedAt.getTime() < 24 * 60 * 60 * 1000) {
+  if (existing && Date.now() - existing.analyzedAt.getTime() > 24 * 60 * 60 * 1000) {
     return NextResponse.json({ cached: true, analysis: existing })
   }
 

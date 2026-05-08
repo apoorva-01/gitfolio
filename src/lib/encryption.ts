@@ -4,8 +4,15 @@ const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12
 const AUTH_TAG_LENGTH = 16
 
+function validateKey(key: string): Buffer {
+  if (!key || key.length !== 64) {
+    throw new Error('ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Generate with: openssl rand -hex 32')
+  }
+  return Buffer.from(key, 'hex')
+}
+
 export function encrypt(plaintext: string, key: string): string {
-  const keyBuffer = Buffer.from(key, 'hex')
+  const keyBuffer = validateKey(key)
   const iv = crypto.randomBytes(IV_LENGTH)
 
   const cipher = crypto.createCipheriv(ALGORITHM, keyBuffer, iv, {
@@ -23,7 +30,7 @@ export function encrypt(plaintext: string, key: string): string {
 }
 
 export function decrypt(ciphertext: string, key: string): string {
-  const keyBuffer = Buffer.from(key, 'hex')
+  const keyBuffer = validateKey(key)
   const data = Buffer.from(ciphertext, 'base64')
 
   const iv = data.subarray(0, IV_LENGTH)

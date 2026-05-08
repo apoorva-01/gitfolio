@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Input'
@@ -126,7 +127,9 @@ export default function DashboardPage() {
                         <p className="text-sm text-gray-400">{repo.language || 'Unknown'}</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost">Fix with AI</Button>
+                    <Link href={`/repos/${repo.id}`}>
+                      <Button size="sm" variant="secondary">Fix with AI</Button>
+                    </Link>
                   </div>
                 ))}
               </div>

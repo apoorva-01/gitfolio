@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Input'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Link2, Trash2, Bell, Database } from 'lucide-react'
 import { useState } from 'react'
 import { useUIStore } from '@/store'
@@ -43,9 +44,19 @@ export default function SettingsPage() {
           <Badge variant="success">Connected</Badge>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-800">
-          <Button variant="danger" size="sm" onClick={() => signOut()}>
+          <Button variant="secondary" size="sm" onClick={() => signOut()}>
             Revoke Access
           </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+        </CardHeader>
+        <div>
+          <p className="text-sm text-gray-400 mb-3">Choose your preferred theme</p>
+          <ThemeToggle />
         </div>
       </Card>
 
@@ -57,7 +68,7 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <p className="text-sm text-gray-400 mb-4">Clear cached repository data without revoking GitHub access.</p>
-        <Button variant="danger" onClick={clearAllData} disabled={clearing}>
+        <Button variant="secondary" onClick={clearAllData} disabled={clearing}>
           <Trash2 className="w-4 h-4 mr-2" />
           {clearing ? 'Clearing...' : 'Clear All Cached Data'}
         </Button>

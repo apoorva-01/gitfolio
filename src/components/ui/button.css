@@ -14,7 +14,7 @@
   transition: all var(--transition);
   white-space: nowrap;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .btn:disabled {
@@ -48,7 +48,7 @@
 
 .btn-danger {
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .btn-danger:hover:not(:disabled) {

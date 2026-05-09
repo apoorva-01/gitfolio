@@ -25,6 +25,8 @@
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
 
   /* Typography */
   --font-sans: 'Satoshi', system-ui, -apple-system, sans-serif;
@@ -72,6 +74,8 @@
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
 }
 
 *, *::before, *::after {

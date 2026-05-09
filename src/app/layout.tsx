@@ -1,27 +1,43 @@
-import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
-import { Providers } from "./providers"
-import "@/app/globals.css"
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-})
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-})
+import type { Metadata } from 'next'
+import { Providers } from './providers'
+import '@/app/globals.css'
 
 export const metadata: Metadata = {
-  title: "GitFolio - Your GitHub Portfolio Builder",
-  description: "Map your codebase, analyze your profile, and improve your GitHub presence with AI-powered insights",
+  title: 'GitFolio',
+  description: 'Your GitHub story, beautifully told',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="min-h-screen bg-gray-950 text-gray-100 antialiased">
+    <html lang="en" data-theme="dark">
+      <head>
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap"
+          rel="stylesheet"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (theme === 'light' || theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', theme);
+                  } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

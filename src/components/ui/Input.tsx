@@ -1,14 +1,15 @@
 'use client'
 
+import { useId } from 'react'
 import './input.css'
-import { cn } from '@/lib/utils'
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
 }
 
 export function Input({ label, className = '', id, ...props }: InputProps) {
-  const inputId = id || props.name || Math.random().toString(36).slice(2)
+  const generatedId = useId()
+  const inputId = id || props.name || generatedId
   return (
     <div>
       {label && <label htmlFor={inputId} className="input-label">{label}</label>}

@@ -29,7 +29,7 @@ export function Button({
     .join(' ')
 
   return (
-    <button className={classes} {...props}>
+    <button type={props.type ?? 'button'} className={classes} {...props}>
       {children}
     </button>
   )

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics - GitFolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --error: #f85149;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --font-ui: "IBM Plex Sans", -apple-system, sans-serif;
+      --font-mono: "JetBrains Mono", monospace;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-ui); background: var(--bg-primary); color: var(--text-primary); line-height: 1.5; min-height: 100vh; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    header { padding: 16px 0; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(13,17,23,0.95); z-index: 100; }
+    nav { display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text-primary); text-decoration: none; }
+    .logo svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 8px; list-style: none; }
+    .nav-item { padding: 8px 14px; color: var(--text-secondary); text-decoration: none; font-size: 14px; border-radius: var(--radius-sm); }
+    .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .nav-item.active { background: var(--bg-tertiary); color: var(--text-primary); }
+    .content { padding: 32px 0; }
+    .page-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .page-title { font-size: 28px; font-weight: 600; }
+    .time-filter { display: flex; gap: 8px; }
+    .filter-btn { padding: 8px 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+    .filter-btn.active { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--accent); }
+    .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+    .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; }
+    .panel-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+    .chart-container { height: 200px; display: flex; align-items: flex-end; gap: 8px; padding: 0 10px; }
+    .chart-tooltip { position: absolute; background: var(--bg-tertiary); border: 1px solid var(--border); padding: 12px 16px; border-radius: var(--radius-md); font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.15s, transform 0.15s; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 160px; transform: translateY(4px); }
+    .chart-tooltip.visible { opacity: 1; transform: translateY(0); }
+    .tooltip-header { font-weight: 600; font-size: 13px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+    .tooltip-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .tooltip-label { color: var(--text-secondary); }
+    .tooltip-value { font-weight: 600; color: var(--text-primary); }
+    .tooltip-value.positive { color: var(--success); }
+    .tooltip-value.negative { color: var(--error); }
+    .tooltip-change { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+    .tooltip-change.up { background: rgba(63,185,80,0.15); color: var(--success); }
+    .tooltip-change.down { background: rgba(248,81,73,0.15); color: var(--error); }
+    .tooltip-divider { height: 1px; background: var(--border); margin: 8px 0; }
+    .pie-tooltip { position: absolute; background: var(--bg-tertiary); border: 1px solid var(--border); padding: 14px 18px; border-radius: var(--radius-md); font-size: 13px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 180px; }
+    .pie-tooltip.visible { opacity: 1; }
+    .pie-tooltip-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .pie-tooltip-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .pie-tooltip-name { font-weight: 600; }
+    .pie-tooltip-row { display: flex; justify-content: space-between; padding: 3px 0; }
+    .pie-tooltip-row span:first-child { color: var(--text-secondary); }
+    .stat-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; animation: fadeInUp 0.4s ease-out both; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .stat-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-change { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--success); margin-top: 8px; }
+    .stat-change.negative { color: var(--error); }
+    .stat-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-sm); }
+    .sparkline { display: flex; align-items: flex-end; gap: 3px; height: 32px; margin-top: 12px; }
+    .spark-bar { flex: 1; background: var(--success); border-radius: 2px; transition: height 0.3s ease; }
+    .pie-chart-wrap { display: flex; flex-direction: column; align-items: center; position: relative; }
+    .pie-chart { transform: rotate(-90deg); }
+    .pie-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .pie-center-value { font-size: 24px; font-weight: 700; }
+    .pie-center-label { font-size: 11px; color: var(--text-muted); }
+    .activity-table { display: flex; flex-direction: column; gap: 12px; }
+    .activity-row { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
+    .activity-repo { display: flex; align-items: center; gap: 8px; min-width: 140px; font-size: 13px; color: var(--accent); }
+    .repo-icon { width: 16px; height: 16px; }
+    .activity-bar-wrap { flex: 1; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
+    .activity-bar { height: 100%; width: 100%; }
+    .activity-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.6s ease; }
+    .activity-value { font-size: 13px; font-weight: 600; color: var(--text-secondary); min-width: 40px; text-align: right; }
+    .contrib-icon { width: 16px; height: 16px; margin-right: 8px; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .pie-tooltip-row span:last-child { font-weight: 500; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); transition: color 0.2s, transform 0.2s; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); }
+    .legend-item:hover { color: var(--text-primary); background: var(--bg-tertiary); transform: translateX(2px); }
+    .legend-item.active { color: var(--text-primary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; transition: transform 0.2s; }
+    .legend-item:hover .legend-dot { transform: scale(1.3); }
+    .chart-bar { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s, background 0.2s, transform 0.15s; position: relative; cursor: pointer; }
+    .chart-bar:hover, .chart-bar.active { background: var(--success); transform: scaleY(1.03); transform-origin: bottom; }
+    .chart-bar.active { box-shadow: 0 0 0 2px var(--success), 0 0 12px rgba(63,185,80,0.4); }
+    .chart-bar::after { content: attr(data-label); position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--text-muted); }
+    .pie-segment { cursor: pointer; transition: filter 0.2s; }
+    .pie-segment:hover { filter: brightness(1.15); }
+    .stat-card:nth-child(1) { animation-delay: 0s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.2s; }
+    .panel:nth-child(1) { animation-delay: 0.3s; }
+    .panel:nth-child(2) { animation-delay: 0.4s; }
+    @media (max-width: 1024px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#161b22"/>
+            <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" stroke-width="2" fill="none"/>
+            <path d="M12 16l3 3 5-6" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          GitFolio
+        </a>
+        <ul class="nav-links">
+          <li><a href="dashboard.html" class="nav-item">Dashboard</a></li>
+          <li><a href="repositories.html" class="nav-item">Repositories</a></li>
+          <li><a href="analytics.html" class="nav-item active">Analytics</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  <main class="content">
+    <div class="container">
+      <div class="page-header">
+        <h1 class="page-title">Analytics</h1>
+        <div class="time-filter">
+          <button class="filter-btn">Week</button>
+          <button class="filter-btn active">Month</button>
+          <button class="filter-btn">Year</button>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="stat-card" data-stat="commits">
+          <div class="stat-header">
+            <div class="stat-value">487</div>
+            <div class="stat-icon" style="background: rgba(63,185,80,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg></div>
+          </div>
+          <div class="stat-label">Total Commits</div>
+          <div class="stat-change"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 15l-6-6-6 6"/></svg> 23% from last month</div>
+          <div class="sparkline"><div class="spark-bar" style="height:40%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar" style="height:35%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar" style="height:55%"></div><div class="spark-bar" style="height:90%"></div><div class="spark-bar" style="height:70%"></div></div>
+        </div>
+        <div class="stat-card" data-stat="added">
+          <div class="stat-header">
+            <div class="stat-value">1,234</div>
+            <div class="stat-icon" style="background: rgba(88,166,255,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+          </div>
+          <div class="stat-label">Lines Added</div>
+          <div class="stat-change"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 15l-6-6-6 6"/></svg> 15% from last month</div>
+          <div class="sparkline"><div class="spark-bar" style="height:55%;background:#58a6ff"></div><div class="spark-bar" style="height:70%;background:#58a6ff"></div><div class="spark-bar" style="height:45%;background:#58a6ff"></div><div class="spark-bar" style="height:85%;background:#58a6ff"></div><div class="spark-bar" style="height:65%;background:#58a6ff"></div><div class="spark-bar" style="height:95%;background:#58a6ff"></div><div class="spark-bar" style="height:75%;background:#58a6ff"></div></div>
+        </div>
+        <div class="stat-card" data-stat="removed">
+          <div class="stat-header">
+            <div class="stat-value">456</div>
+            <div class="stat-icon" style="background: rgba(248,81,73,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2"><path d="M5 12h14"/></svg></div>
+          </div>
+          <div class="stat-label">Lines Removed</div>
+          <div class="stat-change negative"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg> 8% from last month</div>
+          <div class="sparkline"><div class="spark-bar" style="height:30%;background:#f85149"></div><div class="spark-bar" style="height:50%;background:#f85149"></div><div class="spark-bar" style="height:25%;background:#f85149"></div><div class="spark-bar" style="height:60%;background:#f85149"></div><div class="spark-bar" style="height:40%;background:#f85149"></div><div class="spark-bar" style="height:55%;background:#f85149"></div><div class="spark-bar" style="height:35%;background:#f85149"></div></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h2 class="panel-title">Commit Activity (Last 30 Days)</h2>
+          <div class="chart-container">
+            <div class="chart-bar" style="height: 60%" data-label="1" data-commits="12" data-files="3" data-date="May 10"></div>
+            <div class="chart-bar" style="height: 80%" data-label="2" data-commits="18" data-files="5" data-date="May 9"></div>
+            <div class="chart-bar" style="height: 45%" data-label="3" data-commits="8" data-files="2" data-date="May 8"></div>
+            <div class="chart-bar" style="height: 90%" data-label="4" data-commits="24" data-files="7" data-date="May 7"></div>
+            <div class="chart-bar" style="height: 70%" data-label="5" data-commits="15" data-files="4" data-date="May 6"></div>
+            <div class="chart-bar" style="height: 55%" data-label="6" data-commits="10" data-files="3" data-date="May 5"></div>
+            <div class="chart-bar" style="height: 85%" data-label="7" data-commits="19" data-files="6" data-date="May 4"></div>
+            <div class="chart-bar" style="height: 40%" data-label="8" data-commits="7" data-files="2" data-date="May 3"></div>
+            <div class="chart-bar" style="height: 75%" data-label="9" data-commits="16" data-files="5" data-date="May 2"></div>
+            <div class="chart-bar" style="height: 65%" data-label="10" data-commits="14" data-files="4" data-date="May 1"></div>
+            <div class="chart-bar" style="height: 95%" data-label="11" data-commits="22" data-files="8" data-date="Apr 30"></div>
+            <div class="chart-bar" style="height: 50%" data-label="12" data-commits="9" data-files="2" data-date="Apr 29"></div>
+            <div class="chart-bar" style="height: 80%" data-label="13" data-commits="17" data-files="5" data-date="Apr 28"></div>
+            <div class="chart-bar" style="height: 60%" data-label="14" data-commits="11" data-files="3" data-date="Apr 27"></div>
+          </div>
+          <div class="chart-tooltip" id="chartTooltip"></div>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Language Distribution</h2>
+          <div class="pie-chart-wrap">
+            <svg class="pie-chart" viewBox="0 0 100 100" width="180" height="180">
+              <circle class="pie-segment" cx="50" cy="50" r="40" fill="transparent" stroke="#3178c6" stroke-width="20" stroke-dasharray="125.6 251.2" stroke-dashoffset="0" data-lang="TypeScript" data-files="284" data-lines="12.4k"/>
+              <circle class="pie-segment" cx="50" cy="50" r="40" fill="transparent" stroke="#f1e05a" stroke-width="20" stroke-dasharray="62.8 251.2" stroke-dashoffset="-125.6" data-lang="JavaScript" data-files="156" data-lines="8.2k"/>
+              <circle class="pie-segment" cx="50" cy="50" r="40" fill="transparent" stroke="#dea584" stroke-width="20" stroke-dasharray="30.1 251.2" stroke-dashoffset="-188.4" data-lang="Rust" data-files="45" data-lines="3.1k"/>
+              <circle class="pie-segment" cx="50" cy="50" r="40" fill="transparent" stroke="#00ADD8" stroke-width="20" stroke-dasharray="32.6 251.2" stroke-dashoffset="-218.5" data-lang="Go" data-files="67" data-lines="4.8k"/>
+            </svg>
+            <div class="pie-center"><div class="pie-center-value">552</div><div class="pie-center-label">files</div></div>
+          </div>
+          <div class="pie-tooltip" id="pieTooltip"></div>
+          <div class="legend">
+            <div class="legend-item" data-lang="TypeScript"><span class="legend-dot" style="background: #3178c6"></span> TypeScript 50%</div>
+            <div class="legend-item" data-lang="JavaScript"><span class="legend-dot" style="background: #f1e05a"></span> JavaScript 25%</div>
+            <div class="legend-item" data-lang="Rust"><span class="legend-dot" style="background: #dea584"></span> Rust 12%</div>
+            <div class="legend-item" data-lang="Go"><span class="legend-dot" style="background: #00ADD8"></span> Go 13%</div>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h2 class="panel-title">Top Repositories by Activity</h2>
+          <div class="activity-table">
+            <div class="activity-row"><span class="activity-repo"><svg class="repo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>react-components</span><div class="activity-bar-wrap"><div class="activity-bar"><div class="activity-bar-fill" style="width:100%"></div></div></div><span class="activity-value">187</span></div>
+            <div class="activity-row"><span class="activity-repo"><svg class="repo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>design-system</span><div class="activity-bar-wrap"><div class="activity-bar"><div class="activity-bar-fill" style="width:72%"></div></div></div><span class="activity-value">134</span></div>
+            <div class="activity-row"><span class="activity-repo"><svg class="repo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>api-client</span><div class="activity-bar-wrap"><div class="activity-bar"><div class="activity-bar-fill" style="width:48%"></div></div></div><span class="activity-value">89</span></div>
+            <div class="activity-row"><span class="activity-repo"><svg class="repo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>cli-tool</span><div class="activity-bar-wrap"><div class="activity-bar"><div class="activity-bar-fill" style="width:24%"></div></div></div><span class="activity-value">45</span></div>
+            <div class="activity-row"><span class="activity-repo"><svg class="repo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>portfolio-v3</span><div class="activity-bar-wrap"><div class="activity-bar"><div class="activity-bar-fill" style="width:17%"></div></div></div><span class="activity-value">32</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Contribution Breakdown</h2>
+          <div class="activity-table">
+            <div class="activity-row"><span><svg class="contrib-icon" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></svg>Commits</span><span class="activity-value">487</span></div>
+            <div class="activity-row"><span><svg class="contrib-icon" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>Pull Requests</span><span class="activity-value">23</span></div>
+            <div class="activity-row"><span><svg class="contrib-icon" viewBox="0 0 24 24" fill="none" stroke="#d29922" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Issues</span><span class="activity-value">12</span></div>
+            <div class="activity-row"><span><svg class="contrib-icon" viewBox="0 0 24 24" fill="none" stroke="#a371f7" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Reviews</span><span class="activity-value">34</span></div>
+            <div class="activity-row"><span><svg class="contrib-icon" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Discussions</span><span class="activity-value">8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script>
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const chartBars = document.querySelectorAll('.chart-bar');
+    const statValues = document.querySelectorAll('.stat-value');
+    const statChanges = document.querySelectorAll('.stat-change');
+    const statCards = document.querySelectorAll('.stat-card');
+    const tooltip = document.getElementById('chartTooltip');
+    const pieTooltip = document.getElementById('pieTooltip');
+    const pieSegments = document.querySelectorAll('.pie-segment');
+    const legendItems = document.querySelectorAll('.legend-item');
+
+    const mockData = {
+      week: { commits: '124', added: '432', removed: '198', change: '↑ 5%', negative: false, bars: ['30%','45%','20%','55%','40%','35%','60%'], sparkData: [[40,60,35,80,55,90,70],[55,70,45,85,65,95,75],[30,50,25,60,40,55,35]] },
+      month: { commits: '487', added: '1,234', removed: '456', change: '↑ 23%', negative: false, bars: ['60%','80%','45%','90%','70%','55%','85%','40%','75%','65%','95%','50%','80%','60%'], sparkData: [[40,60,35,80,55,90,70],[55,70,45,85,65,95,75],[30,50,25,60,40,55,35]] },
+      year: { commits: '2,847', added: '12,456', removed: '4,321', change: '↑ 45%', negative: false, bars: ['40%','55%','60%','75%','80%','65%','70%','85%','90%','75%','60%','55%','70%'], sparkData: [[50,65,55,80,70,85,75],[60,75,65,90,80,95,85],[40,55,45,70,60,75,50]] }
+    };
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const period = btn.textContent.toLowerCase();
+        const data = mockData[period] || mockData.month;
+        statValues[0].textContent = data.commits;
+        statValues[1].textContent = data.added;
+        statValues[2].textContent = data.removed;
+        statChanges.forEach((el, i) => {
+          el.classList.toggle('negative', i === 2 && data.negative);
+          el.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="${data.negative ? 'M6 9l6 6 6-6' : 'M18 15l-6-6-6 6'}"/></svg> ${data.change} from last period`;
+        });
+        chartBars.forEach((bar, i) => bar.style.height = data.bars[i] || '50%');
+        document.querySelectorAll('.sparkline').forEach((sparkline, si) => {
+          const sparkBars = sparkline.querySelectorAll('.spark-bar');
+          const colors = ['#3fb950', '#58a6ff', '#f85149'];
+          sparkBars.forEach((bar, bi) => {
+            bar.style.height = data.sparkData[si][bi] + '%';
+            bar.style.background = colors[si];
+          });
+        });
+      });
+    });
+
+    chartBars.forEach(bar => {
+      bar.addEventListener('mouseenter', (e) => {
+        const commits = bar.dataset.commits;
+        const files = bar.dataset.files;
+        const date = bar.dataset.date;
+        const change = parseInt(commits) > 15 ? '+8%' : parseInt(commits) > 10 ? '+3%' : '-2%';
+        const isPositive = change.startsWith('+');
+
+        tooltip.innerHTML = `
+          <div class="tooltip-header">${date}</div>
+          <div class="tooltip-row"><span class="tooltip-label">Commits</span><span class="tooltip-value">${commits}<span class="tooltip-change ${isPositive ? 'up' : 'down'}">${change}</span></span></div>
+          <div class="tooltip-divider"></div>
+          <div class="tooltip-row"><span class="tooltip-label">Files changed</span><span class="tooltip-value">${files}</span></div>
+          <div class="tooltip-row"><span class="tooltip-label">+ Lines</span><span class="tooltip-value positive">+${parseInt(files) * 12}</span></div>
+          <div class="tooltip-row"><span class="tooltip-label">- Lines</span><span class="tooltip-value negative">-${parseInt(files) * 4}</span></div>
+        `;
+
+        const rect = bar.getBoundingClientRect();
+        const containerRect = bar.closest('.panel').getBoundingClientRect();
+        tooltip.style.left = (rect.left - containerRect.left + rect.width / 2 - 80) + 'px';
+        tooltip.style.top = (rect.top - containerRect.top - 140) + 'px';
+        tooltip.classList.add('visible');
+        bar.classList.add('active');
+      });
+      bar.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('visible');
+        bar.classList.remove('active');
+      });
+    });
+
+    pieSegments.forEach(segment => {
+      segment.addEventListener('mouseenter', (e) => {
+        const lang = segment.dataset.lang;
+        const files = segment.dataset.files;
+        const lines = segment.dataset.lines;
+        const color = segment.getAttribute('stroke');
+        const percent = lang === 'TypeScript' ? '50%' : lang === 'JavaScript' ? '25%' : lang === 'Rust' ? '12%' : '13%';
+
+        pieTooltip.innerHTML = `
+          <div class="pie-tooltip-header"><span class="pie-tooltip-dot" style="background:${color}"></span><span class="pie-tooltip-name">${lang}</span></div>
+          <div class="pie-tooltip-row"><span>Percentage</span><span>${percent}</span></div>
+          <div class="pie-tooltip-row"><span>Files</span><span>${files}</span></div>
+          <div class="pie-tooltip-row"><span>Lines</span><span>${lines}</span></div>
+        `;
+
+        const rect = segment.getBoundingClientRect();
+        const panelRect = segment.closest('.panel').getBoundingClientRect();
+        pieTooltip.style.left = (rect.left - panelRect.left + 60) + 'px';
+        pieTooltip.style.top = (rect.top - panelRect.top - 20) + 'px';
+        pieTooltip.classList.add('visible');
+      });
+      segment.addEventListener('mouseleave', () => {
+        pieTooltip.classList.remove('visible');
+      });
+    });
+
+    legendItems.forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        const lang = item.dataset.lang;
+        document.querySelectorAll('.pie-segment').forEach(seg => {
+          if (seg.dataset.lang !== lang) seg.style.opacity = '0.4';
+        });
+        item.classList.add('active');
+      });
+      item.addEventListener('mouseleave', () => {
+        document.querySelectorAll('.pie-segment').forEach(seg => seg.style.opacity = '1');
+        legendItems.forEach(li => li.classList.remove('active'));
+      });
+    });
+
+    statCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const stat = card.dataset.stat;
+        const chartPanel = document.querySelector('.panel:first-child .chart-container');
+        chartPanel.style.animation = 'none';
+        chartPanel.offsetHeight;
+        chartPanel.style.animation = 'fadeInUp 0.3s ease-out';
+      });
+    });
+  </script>
+</body>
+</html>

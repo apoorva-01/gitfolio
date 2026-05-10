@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - GitFolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --error: #f85149;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "JetBrains Mono", "Fira Code", monospace;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --sidebar-width: 240px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 64px;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .logo svg {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed .logo-text {
+      display: none;
+    }
+
+    .collapse-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+    }
+
+    .collapse-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .sidebar.collapsed .collapse-btn {
+      transform: rotate(180deg);
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 8px;
+      overflow-y: auto;
+    }
+
+    .nav-section {
+      margin-bottom: 20px;
+    }
+
+    .nav-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar.collapsed .nav-section-title {
+      display: none;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .nav-item-text {
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed .nav-item-text {
+      display: none;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: var(--bg-primary);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .sidebar.collapsed .nav-badge {
+      display: none;
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      transition: margin-left 0.2s ease;
+    }
+
+    .sidebar.collapsed + .main {
+      margin-left: 64px;
+    }
+
+    /* Header */
+    .header {
+      height: 64px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search-box {
+      position: relative;
+      width: 320px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px 8px 36px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--text-primary);
+      transition: all 0.15s ease;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .header-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .header-btn .badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      background: var(--error);
+      border-radius: 50%;
+    }
+
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .user-menu:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--success));
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Content */
+    .content {
+      padding: 24px;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-icon.blue { background: rgba(88, 166, 255, 0.1); color: var(--accent); }
+    .stat-icon.green { background: rgba(63, 185, 80, 0.1); color: var(--success); }
+    .stat-icon.yellow { background: rgba(210, 153, 34, 0.1); color: var(--warning); }
+    .stat-icon.purple { background: rgba(163, 113, 247, 0.1); color: #a371f7; }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-change {
+      font-size: 12px;
+      color: var(--success);
+    }
+
+    .stat-change.negative {
+      color: var(--error);
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+
+    /* Activity Feed */
+    .panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .panel-action {
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .panel-action:hover {
+      text-decoration: underline;
+    }
+
+    .activity-list {
+      padding: 8px 0;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 20px;
+      transition: background 0.15s ease;
+    }
+
+    .activity-item:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.commit { background: rgba(63, 185, 80, 0.1); color: var(--success); }
+    .activity-icon.pr { background: rgba(88, 166, 255, 0.1); color: var(--accent); }
+    .activity-icon.issue { background: rgba(210, 153, 34, 0.1); color: var(--warning); }
+    .activity-icon.star { background: rgba(163, 113, 247, 0.1); color: #a371f7; }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-text {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .activity-text strong {
+      font-weight: 600;
+    }
+
+    .activity-repo {
+      color: var(--accent);
+    }
+
+    .activity-time {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+      padding: 16px;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .action-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .action-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Trending Repos */
+    .trending-list {
+      padding: 8px 0;
+    }
+
+    .trending-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      transition: background 0.15s ease;
+    }
+
+    .trending-item:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .trending-rank {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-muted);
+      width: 24px;
+    }
+
+    .trending-repo {
+      flex: 1;
+    }
+
+    .trending-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .trending-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .trending-stats {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .trending-stats span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main {
+        margin-left: 0;
+      }
+      .search-box {
+        display: none;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a href="index.html" class="logo">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#161b22"/>
+          <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" stroke-width="2" fill="none"/>
+          <path d="M12 16l3 3 5-6" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text">GitFolio</span>
+      </a>
+      <button class="collapse-btn" onclick="toggleSidebar()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <a href="dashboard.html" class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span class="nav-item-text">Dashboard</span>
+        </a>
+        <a href="analytics.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span class="nav-item-text">Analytics</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Content</div>
+        <a href="repositories.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span class="nav-item-text">Repositories</span>
+          <span class="nav-badge">47</span>
+        </a>
+        <a href="profile.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span class="nav-item-text">Profile</span>
+        </a>
+        <a href="public-profile.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <span class="nav-item-text">Public Page</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Settings</div>
+        <a href="settings.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span class="nav-item-text">Settings</span>
+        </a>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <div class="header-left">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" placeholder="Search repositories...">
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="header-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="badge"></span>
+        </button>
+        <button class="header-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        </button>
+        <div class="user-menu">
+          <div class="user-avatar"></div>
+          <span class="user-name">alexdev</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Welcome back! Here's what's happening with your portfolio.</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Total Repositories</span>
+            <div class="stat-icon blue">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">47</div>
+          <div class="stat-change">+3 this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Total Stars</span>
+            <div class="stat-icon yellow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">1,284</div>
+          <div class="stat-change">+89 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Followers</span>
+            <div class="stat-icon green">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">892</div>
+          <div class="stat-change">+24 this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-label">Contributions</span>
+            <div class="stat-icon purple">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">2,847</div>
+          <div class="stat-change">+156 this year</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Recent Activity</h2>
+            <a href="#" class="panel-action">View all</a>
+          </div>
+          <div class="activity-list">
+            <div class="activity-item">
+              <div class="activity-icon commit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="4"/>
+                  <line x1="1.05" y1="12" x2="7" y2="12"/>
+                  <line x1="17.01" y1="12" x2="22.96" y2="12"/>
+                </svg>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">
+                  Pushed <strong>3 commits</strong> to <span class="activity-repo">react-components</span>
+                </div>
+                <div class="activity-time">2 hours ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon pr">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="18" cy="18" r="3"/>
+                  <circle cx="6" cy="6" r="3"/>
+                  <path d="M13 6h3a2 2 0 0 1 2 2v7"/>
+                  <line x1="6" y1="9" x2="6" y2="21"/>
+                </svg>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">
+                  Opened PR #47: <strong>Add dark mode support</strong> in <span class="activity-repo">design-system</span>
+                </div>
+                <div class="activity-time">5 hours ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon star">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">
+                  <strong>Starred</strong> <span class="activity-repo">vercel/next.js</span>
+                </div>
+                <div class="activity-time">Yesterday</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon issue">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">
+                  Closed issue #23 in <span class="activity-repo">api-client</span>
+                </div>
+                <div class="activity-time">2 days ago</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon commit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="4"/>
+                  <line x1="1.05" y1="12" x2="7" y2="12"/>
+                  <line x1="17.01" y1="12" x2="22.96" y2="12"/>
+                </svg>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">
+                  Merged PR #45 in <span class="activity-repo">utils-lib</span>
+                </div>
+                <div class="activity-time">3 days ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Quick Actions</h2>
+            </div>
+            <div class="quick-actions">
+              <div class="action-grid">
+                <button class="action-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  New Repo
+                </button>
+                <button class="action-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <polyline points="16 6 12 2 8 6"/>
+                    <line x1="12" y1="2" x2="12" y2="15"/>
+                  </svg>
+                  Import
+                </button>
+                <button class="action-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  Edit Profile
+                </button>
+                <button class="action-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="21" x2="9" y2="9"/>
+                  </svg>
+                  Themes
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top: 24px;">
+            <div class="panel-header">
+              <h2 class="panel-title">Trending Repos</h2>
+              <a href="repositories.html" class="panel-action">View all</a>
+            </div>
+            <div class="trending-list">
+              <div class="trending-item">
+                <span class="trending-rank">1</span>
+                <div class="trending-repo">
+                  <div class="trending-name">react-components</div>
+                  <div class="trending-desc">Reusable React UI components</div>
+                </div>
+                <div class="trending-stats">
+                  <span>★ 423</span>
+                  <span>⑂ 89</span>
+                </div>
+              </div>
+              <div class="trending-item">
+                <span class="trending-rank">2</span>
+                <div class="trending-repo">
+                  <div class="trending-name">design-system</div>
+                  <div class="trending-desc">Enterprise design system</div>
+                </div>
+                <div class="trending-stats">
+                  <span>★ 312</span>
+                  <span>⑂ 45</span>
+                </div>
+              </div>
+              <div class="trending-item">
+                <span class="trending-rank">3</span>
+                <div class="trending-repo">
+                  <div class="trending-name">api-client</div>
+                  <div class="trending-desc">TypeScript API client</div>
+                </div>
+                <div class="trending-stats">
+                  <span>★ 198</span>
+                  <span>⑂ 23</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const main = document.querySelector('.main');
+      sidebar.classList.toggle('collapsed');
+      main.style.marginLeft = sidebar.classList.contains('collapsed') ? '64px' : '240px';
+    }
+  </script>
+</body>
+</html>

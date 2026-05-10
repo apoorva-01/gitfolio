@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - GitFolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --error: #f85149;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "JetBrains Mono", "Fira Code", monospace;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .nav-item {
+      padding: 8px 14px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .content {
+      padding: 32px 0;
+    }
+
+    .profile-header {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .profile-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--success));
+      flex-shrink: 0;
+    }
+
+    .profile-info {
+      flex: 1;
+    }
+
+    .profile-name {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .profile-username {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .profile-bio {
+      font-size: 16px;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .profile-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: #238636;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2ea043;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #30363d;
+    }
+
+    .profile-stats {
+      display: flex;
+      gap: 32px;
+      padding: 20px 24px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 32px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    /* Heatmap */
+    .heatmap-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .heatmap-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .heatmap-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    .heatmap-grid {
+      display: flex;
+      gap: 3px;
+    }
+
+    .heatmap-week {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .heatmap-day {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      background: var(--bg-tertiary);
+    }
+
+    .heatmap-day.level-1 { background: #0e4429; }
+    .heatmap-day.level-2 { background: #006d32; }
+    .heatmap-day.level-3 { background: #26a641; }
+    .heatmap-day.level-4 { background: #39d353; }
+
+    .heatmap-months {
+      display: flex;
+      gap: 48px;
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Pinned Repos */
+    .pinned-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .repo-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .repo-card:hover {
+      border-color: var(--accent);
+    }
+
+    .repo-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 8px;
+    }
+
+    .repo-name:hover {
+      text-decoration: underline;
+    }
+
+    .repo-visibility {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 2px 8px;
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+    }
+
+    .repo-description {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .repo-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .repo-stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .language-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Languages */
+    .languages-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .language-bar {
+      display: flex;
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .language-segment {
+      height: 100%;
+    }
+
+    .language-segment.ts { background: #3178c6; flex: 15; }
+    .language-segment.js { background: #f1e05a; flex: 12; }
+    .language-segment.rust { background: #dea584; flex: 8; }
+    .language-segment.go { background: #00ADD8; flex: 5; }
+    .language-segment.python { background: #3572A5; flex: 6; }
+    .language-segment.other { background: #6e7681; flex: 4; }
+
+    .language-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .language-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .language-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    @media (max-width: 768px) {
+      .profile-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .profile-meta {
+        justify-content: center;
+      }
+      .profile-stats {
+        justify-content: center;
+      }
+      .pinned-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#161b22"/>
+            <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" stroke-width="2" fill="none"/>
+            <path d="M12 16l3 3 5-6" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          GitFolio
+        </a>
+        <ul class="nav-links">
+          <li><a href="dashboard.html" class="nav-item">Dashboard</a></li>
+          <li><a href="repositories.html" class="nav-item">Repositories</a></li>
+          <li><a href="analytics.html" class="nav-item">Analytics</a></li>
+          <li><a href="profile.html" class="nav-item active">Profile</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="container">
+      <div class="profile-header">
+        <div class="profile-avatar"></div>
+        <div class="profile-info">
+          <h1 class="profile-name">Alex Developer</h1>
+          <div class="profile-username">@alexdev</div>
+          <p class="profile-bio">Full-stack developer passionate about building developer tools and open source. Currently exploring Rust and systems programming. Previously at Vercel.</p>
+          <div class="profile-meta">
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              San Francisco, CA
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              alex@developer.io
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                <rect x="2" y="9" width="4" height="12"/>
+                <circle cx="4" cy="4" r="2"/>
+              </svg>
+              LinkedIn
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 1-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+              </svg>
+              github.com/alexdev
+            </span>
+          </div>
+          <div class="profile-actions">
+            <a href="settings.html" class="btn btn-primary">Edit Profile</a>
+            <a href="public-profile.html" class="btn btn-secondary">View Public Page</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-stats">
+        <div class="stat-item">
+          <div class="stat-value">47</div>
+          <div class="stat-label">Repositories</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">892</div>
+          <div class="stat-label">Followers</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">234</div>
+          <div class="stat-label">Following</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">2,847</div>
+          <div class="stat-label">Contributions</div>
+        </div>
+      </div>
+
+      <section class="heatmap-container">
+        <div class="heatmap-header">
+          <h2 class="heatmap-title">2,847 contributions in the last year</h2>
+          <div class="heatmap-legend">
+            <span>Less</span>
+            <div class="legend-box" style="background: var(--bg-tertiary)"></div>
+            <div class="legend-box" style="background: #0e4429"></div>
+            <div class="legend-box" style="background: #006d32"></div>
+            <div class="legend-box" style="background: #26a641"></div>
+            <div class="legend-box" style="background: #39d353"></div>
+            <span>More</span>
+          </div>
+        </div>
+        <div class="heatmap-grid">
+          <!-- Generating 52 weeks of heatmap data -->
+          <div class="heatmap-week">
+            <div class="heatmap-day level-1"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-4"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-4"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-4"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-4"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-4"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-4"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-3"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-3"></div><div class="heatmap-day level-4"></div><div class="heatmap-day level-3"></div>
+          </div>
+          <div class="heatmap-week">
+            <div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-2"></div><div class="heatmap-day level-1"></div><div class="heatmap-day level-0"></div>
+          </div>
+        </div>
+        <div class="heatmap-months">
+          <span>Jan</span>
+          <span>Feb</span>
+          <span>Mar</span>
+          <span>Apr</span>
+          <span>May</span>
+          <span>Jun</span>
+          <span>Jul</span>
+          <span>Aug</span>
+          <span>Sep</span>
+          <span>Oct</span>
+          <span>Nov</span>
+          <span>Dec</span>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Pinned Repositories</h2>
+        <div class="pinned-grid">
+          <article class="repo-card">
+            <a href="#" class="repo-name">
+              react-components
+              <span class="repo-visibility">Public</span>
+            </a>
+            <p class="repo-description">A comprehensive library of reusable React UI components with full TypeScript support.</p>
+            <div class="repo-stats">
+              <span class="repo-stat"><span class="language-dot" style="background: #3178c6"></span> TypeScript</span>
+              <span class="repo-stat">★ 423</span>
+              <span class="repo-stat">⑂ 89</span>
+            </div>
+          </article>
+          <article class="repo-card">
+            <a href="#" class="repo-name">
+              design-system
+              <span class="repo-visibility">Public</span>
+            </a>
+            <p class="repo-description">Enterprise design system with 100+ components, dark mode support, and comprehensive docs.</p>
+            <div class="repo-stats">
+              <span class="repo-stat"><span class="language-dot" style="background: #3178c6"></span> TypeScript</span>
+              <span class="repo-stat">★ 312</span>
+              <span class="repo-stat">⑂ 45</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="languages-section">
+        <h2 class="section-title">Top Languages</h2>
+        <div class="language-bar">
+          <div class="language-segment ts"></div>
+          <div class="language-segment js"></div>
+          <div class="language-segment rust"></div>
+          <div class="language-segment go"></div>
+          <div class="language-segment python"></div>
+          <div class="language-segment other"></div>
+        </div>
+        <div class="language-list">
+          <div class="language-item">
+            <span class="language-color" style="background: #3178c6"></span>
+            TypeScript 50%
+          </div>
+          <div class="language-item">
+            <span class="language-color" style="background: #f1e05a"></span>
+            JavaScript 25%
+          </div>
+          <div class="language-item">
+            <span class="language-color" style="background: #dea584"></span>
+            Rust 10%
+          </div>
+          <div class="language-item">
+            <span class="language-color" style="background: #00ADD8"></span>
+            Go 8%
+          </div>
+          <div class="language-item">
+            <span class="language-color" style="background: #3572A5"></span>
+            Python 7%
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

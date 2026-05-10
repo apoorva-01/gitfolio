@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repositories - GitFolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --error: #f85149;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "JetBrains Mono", "Fira Code", monospace;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --sidebar-width: 240px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .nav-badge {
+      background: var(--bg-primary);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: #238636;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2ea043;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #30363d;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent);
+    }
+
+    .content {
+      padding: 32px 0;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-filter {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 12px 10px 40px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+    }
+
+    .filter-btn {
+      padding: 10px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+    }
+
+    .view-btn {
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .view-btn.active {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .repos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 16px;
+    }
+
+    .repo-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .repo-card:hover {
+      border-color: var(--accent);
+    }
+
+    .repo-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .repo-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .repo-name:hover {
+      text-decoration: underline;
+    }
+
+    .repo-visibility {
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      background: var(--bg-tertiary);
+      border-radius: 20px;
+    }
+
+    .repo-description {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .repo-stats {
+      display: flex;
+      gap: 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .repo-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .repo-language {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .language-color {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .language-color.js { background: #f1e05a; }
+    .language-color.ts { background: #3178c6; }
+    .language-color.python { background: #3572A5; }
+    .language-color.rust { background: #dea584; }
+    .language-color.go { background: #00ADD8; }
+    .language-color.ruby { background: #701516; }
+    .language-color.java { background: #b07219; }
+    .language-color.vue { background: #41b883; }
+    .language-color.css { background: #563d7c; }
+    .language-color.html { background: #e34c26; }
+
+    .repo-meta {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .language-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .repos-grid.list-view { display: flex; flex-direction: column; gap: 12px; }
+    .repos-grid.list-view .repo-card { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+    .repos-grid.list-view .repo-header { margin-bottom: 0; }
+    .repos-grid.list-view .repo-description { margin-bottom: 0; flex: 1; }
+    .repos-grid.list-view .repo-stats { margin-top: 0; padding-top: 0; border-top: none; }
+
+    @media (max-width: 640px) {
+      .repos-grid {
+        grid-template-columns: 1fr;
+      }
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .search-filter {
+        flex-direction: column;
+      }
+      .search-box {
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#161b22"/>
+            <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" stroke-width="2" fill="none"/>
+            <path d="M12 16l3 3 5-6" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          GitFolio
+        </a>
+        <ul class="nav-links">
+          <li><a href="dashboard.html" class="nav-item">Dashboard</a></li>
+          <li><a href="repositories.html" class="nav-item active">Repositories <span class="nav-badge">47</span></a></li>
+          <li><a href="analytics.html" class="nav-item">Analytics</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a href="onboarding.html" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New
+          </a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="container">
+      <div class="page-header">
+        <h1 class="page-title">Repositories</h1>
+        <p class="page-subtitle">All your repositories, synced from GitHub</p>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-filter">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" placeholder="Find a repository...">
+          </div>
+          <button class="filter-btn">Type ▾</button>
+          <button class="filter-btn">Language ▾</button>
+          <button class="filter-btn">Sort ▾</button>
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </button>
+          <button class="view-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="language-legend">
+        <div class="legend-item"><span class="language-color js"></span> JavaScript 12</div>
+        <div class="legend-item"><span class="language-color ts"></span> TypeScript 15</div>
+        <div class="legend-item"><span class="language-color python"></span> Python 8</div>
+        <div class="legend-item"><span class="language-color rust"></span> Rust 4</div>
+        <div class="legend-item"><span class="language-color go"></span> Go 5</div>
+        <div class="legend-item"><span class="language-color css"></span> CSS 3</div>
+      </div>
+
+      <div class="repos-grid" id="reposGrid">
+        <article class="repo-card" data-name="react-components" data-language="typescript">
+          <div class="repo-header">
+            <a href="#" class="repo-name">react-components</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">A comprehensive library of reusable React UI components with full TypeScript support and accessibility features.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color ts"></span> TypeScript</span>
+            <span class="repo-stat">★ 423</span>
+            <span class="repo-stat">⑂ 89</span>
+          </div>
+          <div class="repo-meta">Updated 2 hours ago</div>
+        </article>
+
+        <article class="repo-card" data-name="design-system" data-language="typescript">
+          <div class="repo-header">
+            <a href="#" class="repo-name">design-system</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">Enterprise design system with 100+ components, dark mode support, and comprehensive documentation.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color ts"></span> TypeScript</span>
+            <span class="repo-stat">★ 312</span>
+            <span class="repo-stat">⑂ 45</span>
+          </div>
+          <div class="repo-meta">Updated yesterday</div>
+        </article>
+
+        <article class="repo-card" data-name="api-client" data-language="typescript">
+          <div class="repo-header">
+            <a href="#" class="repo-name">api-client</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">Type-safe API client with built-in caching, retry logic, and automatic TypeScript type generation.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color ts"></span> TypeScript</span>
+            <span class="repo-stat">★ 198</span>
+            <span class="repo-stat">⑂ 23</span>
+          </div>
+          <div class="repo-meta">Updated 3 days ago</div>
+        </article>
+
+        <article class="repo-card" data-name="cli-tool" data-language="rust">
+          <div class="repo-header">
+            <a href="#" class="repo-name">cli-tool</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">Modern CLI framework with interactive prompts, autocomplete, and beautiful terminal output.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color rust"></span> Rust</span>
+            <span class="repo-stat">★ 156</span>
+            <span class="repo-stat">⑂ 18</span>
+          </div>
+          <div class="repo-meta">Updated 1 week ago</div>
+        </article>
+
+        <article class="repo-card" data-name="ml-utils" data-language="python">
+          <div class="repo-header">
+            <a href="#" class="repo-name">ml-utils</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">Machine learning utilities and pre-trained model wrappers for common tasks.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color python"></span> Python</span>
+            <span class="repo-stat">★ 134</span>
+            <span class="repo-stat">⑂ 28</span>
+          </div>
+          <div class="repo-meta">Updated 2 weeks ago</div>
+        </article>
+
+        <article class="repo-card" data-name="portfolio-v3" data-language="typescript">
+          <div class="repo-header">
+            <a href="#" class="repo-name">portfolio-v3</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">My personal portfolio website built with Next.js and Tailwind CSS.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color ts"></span> TypeScript</span>
+            <span class="repo-stat">★ 89</span>
+            <span class="repo-stat">⑂ 12</span>
+          </div>
+          <div class="repo-meta">Updated 1 month ago</div>
+        </article>
+
+        <article class="repo-card" data-name="go-microservices" data-language="go">
+          <div class="repo-header">
+            <a href="#" class="repo-name">go-microservices</a>
+            <span class="repo-visibility">Public</span>
+          </div>
+          <p class="repo-description">Example microservices architecture in Go with Docker and Kubernetes configs.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color go"></span> Go</span>
+            <span class="repo-stat">★ 78</span>
+            <span class="repo-stat">⑂ 15</span>
+          </div>
+          <div class="repo-meta">Updated 2 months ago</div>
+        </article>
+
+        <article class="repo-card" data-name="vue-dashboard" data-language="vue">
+          <div class="repo-header">
+            <a href="#" class="repo-name">vue-dashboard</a>
+            <span class="repo-visibility">Private</span>
+          </div>
+          <p class="repo-description">Internal dashboard for team metrics and analytics visualization.</p>
+          <div class="repo-stats">
+            <span class="repo-stat"><span class="language-color vue"></span> Vue</span>
+            <span class="repo-stat">★ 12</span>
+            <span class="repo-stat">⑂ 3</span>
+          </div>
+          <div class="repo-meta">Updated 3 months ago</div>
+        </article>
+      </div>
+    </div>
+  </main>
+  <script>
+    const searchInput = document.querySelector('.search-box input');
+    const reposGrid = document.getElementById('reposGrid');
+    const viewBtns = document.querySelectorAll('.view-btn');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const cards = reposGrid.querySelectorAll('.repo-card');
+      cards.forEach(card => {
+        const name = card.dataset.name.toLowerCase();
+        const desc = card.querySelector('.repo-description').textContent.toLowerCase();
+        card.style.display = (name.includes(query) || desc.includes(query)) ? '' : 'none';
+      });
+    });
+
+    viewBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const isList = btn.closest('.view-btn').previousElementSibling?.classList.contains('active') === false;
+        reposGrid.classList.toggle('list-view', !isList);
+      });
+    });
+
+    const filters = { type: 'all', language: 'all', sort: 'updated' };
+    filterBtns[0].addEventListener('click', () => toggleDropdown(filterBtns[0], 'type'));
+    filterBtns[1].addEventListener('click', () => toggleDropdown(filterBtns[1], 'language'));
+    filterBtns[2].addEventListener('click', () => toggleDropdown(filterBtns[2], 'sort'));
+
+    function toggleDropdown(btn, type) {
+      const options = { type: ['All', 'Public', 'Private'], language: ['All', 'TypeScript', 'JavaScript', 'Rust', 'Python', 'Go', 'Vue'], sort: ['Recently updated', 'Name', 'Stars'] };
+      let dropdown = btn.nextElementSibling;
+      if (!dropdown || !dropdown.classList.contains('dropdown')) {
+        dropdown = document.createElement('div');
+        dropdown.className = 'dropdown';
+        dropdown.style.cssText = 'position:absolute;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px;z-index:10;margin-top:4px;min-width:150px;';
+        btn.after(dropdown);
+        options[type].forEach(opt => {
+          const item = document.createElement('div');
+          item.textContent = opt;
+          item.style.cssText = 'padding:8px 12px;cursor:pointer;border-radius:4px;font-size:13px;color:var(--text-secondary);';
+          item.addEventListener('mouseenter', () => item.style.background = 'var(--bg-tertiary)');
+          item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+          item.addEventListener('click', () => {
+            btn.innerHTML = opt + ' ▾';
+            filters[type] = opt.toLowerCase();
+            applyFilters();
+            dropdown.remove();
+          });
+          dropdown.appendChild(item);
+        });
+      } else {
+        dropdown.remove();
+      }
+    }
+
+    function applyFilters() {
+      const cards = reposGrid.querySelectorAll('.repo-card');
+      cards.forEach(card => {
+        const lang = card.dataset.language;
+        const visible = (filters.language === 'all' || lang === filters.language);
+        card.style.display = visible ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

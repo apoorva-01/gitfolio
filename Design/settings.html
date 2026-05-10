@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - GitFolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --error: #f85149;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --font-ui: "IBM Plex Sans", -apple-system, sans-serif;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-ui); background: var(--bg-primary); color: var(--text-primary); line-height: 1.5; min-height: 100vh; display: flex; }
+    .sidebar { width: 240px; background: var(--bg-secondary); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; height: 100vh; }
+    .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text-primary); text-decoration: none; }
+    .logo svg { width: 28px; height: 28px; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: all 0.15s; }
+    .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .nav-item.active { background: rgba(88, 166, 255, 0.1); color: var(--accent); }
+    .main { flex: 1; margin-left: 240px; padding: 32px 48px; }
+    .page-title { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; }
+    .section { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 24px; }
+    .section-header { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+    .section-title { font-size: 16px; font-weight: 600; }
+    .section-body { padding: 24px; }
+    .form-row { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; margin-bottom: 24px; }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-label { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; display: block; }
+    .form-input { width: 100%; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; color: var(--text-primary); }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-textarea { min-height: 100px; resize: vertical; }
+    .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .avatar-section { display: flex; gap: 24px; align-items: flex-start; }
+    .avatar-wrapper { position: relative; }
+    .avatar { width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--success)); border: 3px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .avatar-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s; cursor: pointer; }
+    .avatar-wrapper:hover .avatar-overlay { opacity: 1; }
+    .avatar-overlay svg { width: 28px; height: 28px; color: white; }
+    .avatar-actions { display: flex; gap: 10px; margin-top: 4px; }
+    .avatar-actions .btn { padding: 8px 16px; font-size: 13px; }
+    .avatar-current { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn-primary { background: #238636; color: white; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #30363d; }
+    .btn-danger { background: #da3633; color: white; }
+    .btn-danger:hover { background: #f85149; }
+    .switch { position: relative; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-tertiary); border-radius: 24px; transition: 0.3s; }
+    .slider::before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .switch input:checked + .slider { background: var(--success); }
+    .switch input:checked + .slider::before { transform: translateX(20px); }
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 14px; font-weight: 500; }
+    .toggle-desc { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .actions { display: flex; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
+    @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 24px; } .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a href="index.html" class="logo">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#161b22"/>
+          <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" stroke-width="2" fill="none"/>
+          <path d="M12 16l3 3 5-6" stroke="#3fb950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        GitFolio
+      </a>
+    </div>
+    <nav>
+      <a href="profile.html" class="nav-item">Profile</a>
+      <a href="settings.html" class="nav-item active">Account</a>
+      <a href="settings.html" class="nav-item">Appearance</a>
+      <a href="settings.html" class="nav-item">Notifications</a>
+      <a href="settings.html" class="nav-item">Security</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <h1 class="page-title">Account Settings</h1>
+    <p class="page-subtitle">Manage your account preferences and settings</p>
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Profile Information</h2>
+      </div>
+      <div class="section-body">
+        <div class="form-row">
+          <div>
+            <label class="form-label">Avatar</label>
+          </div>
+          <div class="avatar-section">
+            <div class="avatar-wrapper">
+              <div class="avatar"></div>
+              <div class="avatar-overlay">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+            </div>
+            <div>
+              <div class="avatar-actions">
+                <button class="btn btn-secondary">Upload new</button>
+                <button class="btn btn-danger">Remove</button>
+              </div>
+              <p class="avatar-current">JPG, PNG or GIF. Max 2MB.</p>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Full Name</label>
+          </div>
+          <div>
+            <input type="text" class="form-input" value="Alex Developer">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Username</label>
+          </div>
+          <div>
+            <input type="text" class="form-input" value="alexdev">
+            <p class="form-hint">Your unique identifier: gitfolio.dev/alexdev</p>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Bio</label>
+          </div>
+          <div>
+            <textarea class="form-input form-textarea">Full-stack developer passionate about building developer tools and open source.</textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Location</label>
+          </div>
+          <div>
+            <input type="text" class="form-input" value="San Francisco, CA">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="form-label">Website</label>
+          </div>
+          <div>
+            <input type="url" class="form-input" placeholder="https://your-site.com">
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Email Preferences</h2>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Weekly digest</div>
+            <div class="toggle-desc">Receive a weekly summary of your activity</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">New followers</div>
+            <div class="toggle-desc">Get notified when someone follows you</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Repository updates</div>
+            <div class="toggle-desc">Notifications about your repositories</div>
+          </div>
+          <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Connected Accounts</h2>
+      </div>
+      <div class="section-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">GitHub</div>
+            <div class="toggle-desc">Connected as @alexdev</div>
+          </div>
+          <button class="btn btn-secondary">Disconnect</button>
+        </div>
+      </div>
+    </section>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+      <button class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+    </div>
+  </main>
+  <div id="toast" style="position:fixed;bottom:24px;right:24px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 24px;font-size:14px;display:none;align-items:center;gap:12px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span id="toastMsg">Settings saved!</span>
+  </div>
+  <script>
+    const form = document.querySelector('form') || document.querySelector('.section-body')?.closest('form');
+    const originalData = {};
+    document.querySelectorAll('.form-input').forEach(input => originalData[input.name || input.previousElementSibling?.textContent] = input.value);
+
+    function showToast(msg, success = true) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const icon = toast.querySelector('svg');
+      toastMsg.textContent = msg;
+      icon.innerHTML = success ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+      icon.querySelector('path,circle,line').stroke = success ? '#3fb950' : '#f85149';
+      toast.style.display = 'flex';
+      setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
+    function saveSettings() {
+      const inputs = document.querySelectorAll('.form-input');
+      let changed = false;
+      inputs.forEach(input => {
+        if (input.value !== (originalData[input.name || input.previousElementSibling?.textContent] || '')) changed = true;
+      });
+      if (changed) {
+        inputs.forEach(input => originalData[input.name || input.previousElementSibling?.textContent] = input.value);
+        localStorage.setItem('gitfolio_settings', JSON.stringify({
+          name: inputs[0]?.value, username: inputs[1]?.value, bio: inputs[2]?.value,
+          location: inputs[3]?.value, website: inputs[4]?.value
+        }));
+      }
+      showToast('Settings saved successfully!');
+    }
+
+    function resetForm() {
+      document.querySelectorAll('.form-input').forEach(input => {
+        const key = input.name || input.previousElementSibling?.textContent;
+        if (originalData[key] !== undefined) input.value = originalData[key];
+      });
+      showToast('Changes discarded', false);
+    }
+
+    const saved = localStorage.getItem('gitfolio_settings');
+    if (saved) {
+      const data = JSON.parse(saved);
+      document.querySelectorAll('.form-input').forEach(input => {
+        if (data.name && input.value === 'Alex Developer') input.value = data.name;
+        if (data.username && input.value === 'alexdev') input.value = data.username;
+      });
+    }
+  </script>
+</body>
+</html>

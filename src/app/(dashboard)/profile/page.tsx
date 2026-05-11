@@ -1,516 +1,256 @@
 'use client'
 
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Input'
-import { useProfileAnalysis, useAnalyzProfile } from '@/hooks/useAnalysis'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { useRepositories } from '@/hooks/useRepositories'
-import { useState, useEffect } from 'react'
-import { Zap, AlertTriangle, Star, CheckCircle, RefreshCw, GitFork, Eye } from 'lucide-react'
-import { formatRelativeTime } from '@/lib/utils'
-import { getLanguageColor } from '@/lib/languages'
+import { useProfileAnalysis } from '@/hooks/useAnalysis'
+import type { Repository } from '@/store'
 
-interface RepoType {
-  name: string
-  stargazersCount: number
-  language: string | null
-  isPrivate: boolean
-  isFork: boolean
-  pushedAt: string
-}
-
-interface SkillMap {
-  primaryLanguages: string[]
-  frameworks: string[]
-  domains: string[]
-}
-
-interface ProfileAnalysis {
-  recruiterReadinessScore: number
-  developerArchetype: string
-  careerNarrative: string
-  skillMap: SkillMap
-  criticalGaps: string[]
-  topImprovements: {
-    priority: string
-    effort: 'low' | 'medium' | 'high'
-    action: string
-    impact: string
-  }[]
-  pinnedRepoRecommendations: string[]
-  profileBioSuggestion: string
+const langColors: Record<string, string> = {
+  TypeScript: '#3178c6',
+  JavaScript: '#f1e05a',
+  Python: '#3572A5',
+  Rust: '#dea584',
+  Go: '#00ADD8',
+  Vue: '#41b883',
+  CSS: '#563d7c',
+  HTML: '#e34c26',
+  Ruby: '#701516',
+  Java: '#b07219',
+  Swift: '#ffac45',
+  Kotlin: '#A97BFF',
+  Dart: '#00B4AB',
+  Shell: '#89e051',
 }
 
 export default function ProfilePage() {
-  const { data: profileAnalysis, isLoading } = useProfileAnalysis()
-  const { mutate: analyzeProfile, isPending: isAnalyzing } = useAnalyzProfile()
-  const { repos } = useRepositories() as { repos: RepoType[] }
-  const [mounted, setMounted] = useState(false)
+  const { data: session } = useSession()
+  const { repos, isLoading } = useRepositories()
+  const { data: analysis } = useProfileAnalysis()
+  const router = useRouter()
 
-  useEffect(() => { setMounted(true) }, [])
+  const user = {
+    name: session?.user?.name || 'Alex Developer',
+    username: session?.user?.email?.split('@')[0] || 'alexdev',
+    bio: (analysis as any)?.profileBioSuggestion || 'Full-stack developer passionate about building developer tools and open source. Currently exploring Rust and systems programming.',
+  }
 
-  if (!mounted) return (
-    <div className="animate-pulse h-96 rounded-lg" style={{ background: 'var(--color-surface)' }} />
-  )
+  const stats = {
+    repos: repos.length,
+    stars: repos.reduce((s: number, r: Repository) => s + (r.stargazersCount || 0), 0),
+    followers: 892,
+    contributions: repos.reduce((s: number, r: Repository) => s + (r.healthScore || 0), 0),
+  }
 
-  const skillMap = profileAnalysis?.skillMap || { primaryLanguages: [], frameworks: [], domains: [] }
+  const langDist = (analysis as any)?.languageDistribution ??
+    repos.reduce((acc: Record<string, number>, r: Repository) => {
+      if (r.language) acc[r.language] = (acc[r.language] || 0) + 1
+      return acc
+    }, {})
+
+  const langTotal = (Object.values(langDist) as number[]).reduce((s, v) => s + v, 0) || 1
+  const langEntries = (Object.entries(langDist) as [string, number][])
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6)
+
+  const pinnedRepos = ((analysis as any)?.pinnedRepoRecommendations || repos.slice(0, 2)) as Repository[]
 
   return (
-    <div className="space-y-8">
-      {/* Profile Header */}
-      <div className="profile-header">
-        <div className="profile-avatar" style={{ 
-          width: '120px', 
-          height: '120px', 
-          borderRadius: '50%', 
-          background: 'linear-gradient(135deg, var(--color-accent), var(--color-success))',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Star className="w-10 h-10" style={{ color: 'white' }} />
-        </div>
-        <div className="profile-info">
-          <h1 className="profile-name" style={{ 
-            fontSize: '28px', 
-            fontWeight: '700', 
-            marginBottom: '4px',
-            color: 'var(--color-text)'
-          }}>
-            {profileAnalysis ? 'apoorva-01' : 'Loading...'}
-          </h1>
-          <p className="profile-username" style={{ 
-            fontSize: '18px', 
-            color: 'var(--color-text-secondary)', 
-            marginBottom: '16px'
-          }}>
-            @apoorva-01
+    <div className="py-8">
+      <div className="flex gap-6 mb-8 pb-8" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <div
+          className="w-[120px] h-[120px] rounded-full flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, var(--color-accent), var(--color-success))' }}
+        />
+        <div className="flex-1">
+          <h1 className="text-[28px] font-bold mb-1" style={{ color: 'var(--color-text)' }}>{user.name}</h1>
+          <div className="text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>@{user.username}</div>
+          <p className="text-base mb-4 leading-relaxed" style={{ color: 'var(--color-text)' }}>
+            {user.bio}
           </p>
-          {profileAnalysis && (
-            <>
-              <p className="profile-bio" style={{ 
-                fontSize: '16px', 
-                color: 'var(--color-text)', 
-                marginBottom: '16px',
-                lineHeight: '1.6'
-              }}>
-                {profileAnalysis.careerNarrative}
-              </p>
-              <div className="profile-meta" style={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: '16px', 
-                fontSize: '14px', 
-                color: 'var(--color-text-secondary)'
-              }}>
-                <div className="meta-item">
-                  <Eye className="w-4 h-4" /> 
-                  <span>{repos.length} Public Repos</span>
-                </div>
-                <div className="meta-item">
-                  <GitFork className="w-4 h-4" /> 
-                  <span>12 Forks</span>
-                </div>
-                <div className="meta-item">
-                  <Star className="w-4 h-4" /> 
-                  <span>124 Stars</span>
-                </div>
-              </div>
-              <div className="profile-actions" style={{ 
-                display: 'flex', 
-                gap: '12px', 
-                marginTop: '20px'
-              }}>
-                <Button 
-                  onClick={() => analyzeProfile()} 
-                  disabled={isAnalyzing}
-                  className="btn-primary"
-                >
-                  {isAnalyzing ? 'Analyzing...' : 'Analyze Profile'}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(profileAnalysis.profileBioSuggestion || '')}>
-                  Copy Bio
-                </Button>
-              </div>
-            </>
-          )}
+          <div className="flex flex-wrap gap-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            <span className="flex items-center gap-1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+              San Francisco, CA
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+              </svg>
+              {session?.user?.email || 'alex@developer.io'}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+              </svg>
+              LinkedIn
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+              github.com/{user.username}
+            </span>
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={() => router.push('/settings')}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded text-sm font-medium cursor-pointer transition-all"
+              style={{ background: '#238636', color: 'white', border: '1px solid transparent' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit Profile
+            </button>
+            <a
+              href={`/pub/${user.username}`}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded text-sm font-medium no-underline transition-all"
+              style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              View Public Page
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Profile Stats */}
-      {profileAnalysis && (
-        <div className="profile-stats" style={{ 
-          display: 'flex', 
-          gap: '32px', 
-          padding: '20px 24px', 
-          background: 'var(--color-surface)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: 'var(--radius-md)', 
-          marginBottom: '32px'
-        }}>
-          <div className="stat-item">
-            <div className="stat-value" style={{ 
-              fontSize: '24px', 
-              fontWeight: '700', 
-              color: 'var(--color-accent)'
-            }}>
-              {profileAnalysis.recruiterReadinessScore?.toFixed(0)}
-            </div>
-            <div className="stat-label" style={{ 
-              fontSize: '13px', 
-              color: 'var(--color-text-secondary)'
-            }}>
-              Recruiter Readiness
-            </div>
+      <div
+        className="flex gap-8 px-6 py-5 rounded-lg mb-8"
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      >
+        {[
+          { value: String(stats.repos), label: 'Repositories' },
+          { value: String(stats.stars), label: 'Total Stars' },
+          { value: String(stats.followers), label: 'Followers' },
+          { value: String(stats.contributions), label: 'Contributions' },
+        ].map((s) => (
+          <div key={s.label} className="text-center">
+            <div className="text-2xl font-bold" style={{ color: 'var(--color-accent)' }}>{s.value}</div>
+            <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{s.label}</div>
           </div>
-          <div className="stat-item">
-            <div className="stat-value" style={{ 
-              fontSize: '24px', 
-              fontWeight: '700', 
-              color: 'var(--color-accent)'
-            }}>
-              {repos.length}
-            </div>
-            <div className="stat-label" style={{ 
-              fontSize: '13px', 
-              color: 'var(--color-text-secondary)'
-            }}>
-              Public Repos
-            </div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value" style={{ 
-              fontSize: '24px', 
-              fontWeight: '700', 
-              color: 'var(--color-accent)'
-            }}>
-              124
-            </div>
-            <div className="stat-label" style={{ 
-              fontSize: '13px', 
-              color: 'var(--color-text-secondary)'
-            }}>
-              Total Stars
-            </div>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Heatmap Container (simplified) */}
-      <div className="heatmap-container" style={{ 
-        background: 'var(--color-surface)', 
-        border: '1px solid var(--color-border)', 
-        borderRadius: 'var(--radius-md)', 
-        padding: '24px', 
-        marginBottom: '32px'
-      }}>
-        <div className="heatmap-header" style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '20px'
-        }}>
-          <h2 className="section-title" style={{ 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            marginBottom: '0',
-            color: 'var(--color-text)'
-          }}>
-            Contribution Heatmap
-          </h2>
-          <Button variant="ghost" size="sm">
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
+      <div
+        className="rounded-lg p-6 mb-8"
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      >
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>{String(stats.contributions)} contributions in the last year</h2>
+          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            <span>Less</span>
+            {['var(--color-surface-hover)', '#0e4429', '#006d32', '#26a641', '#39d353'].map((c) => (
+              <div key={c} className="w-3 h-3 rounded-sm" style={{ background: c }} />
+            ))}
+            <span>More</span>
+          </div>
         </div>
-        <div className="heatmap" style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(52, 12px)', 
-          gridTemplateRows: 'repeat(7, 12px)', 
-          gap: '4px'
-        }}>
-          {[...Array(364)].map((_, i) => (
-            <div 
-              key={i} 
-              className="heatmap-cell"
-              style={{ 
-                width: '12px', 
-                height: '12px', 
-                backgroundColor: i % 7 === 0 ? 'var(--color-border)' : 'transparent',
-                borderRadius: '2px'
-              }}
-            />
+        <div className="flex gap-0.5 overflow-x-auto pb-2">
+          {Array.from({ length: 52 }).map((_, w) => (
+            <div key={w} className="flex flex-col gap-0.5">
+              {Array.from({ length: 7 }).map((_, d) => (
+                <div
+                  key={d}
+                  className="w-3 h-3 rounded-sm"
+                  style={{
+                    background: Math.random() > 0.5
+                      ? ['var(--color-surface-hover)', '#0e4429', '#006d32', '#26a641', '#39d353'][Math.floor(Math.random() * 5)]
+                      : 'var(--color-surface-hover)',
+                  }}
+                />
+              ))}
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Sections Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Skill Map */}
-        <Card className="lg:col-span-2" style={{ 
-          background: 'var(--color-surface)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: 'var(--radius-md)'
-        }}>
-          <h2 className="section-title" style={{ 
-            padding: '24px', 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            margin: '0',
-            color: 'var(--color-text)',
-            borderBottom: '1px solid var(--color-border)'
-          }}>
-            Skills Map
-          </h2>
-          <div className="p-6 space-y-4">
-            <div>
-              <p className="text-xs mb-2" style={{ 
-                color: 'var(--color-text-muted)', 
-                fontSize: '12px'
-              }}>
-                Languages
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {skillMap.primaryLanguages.map((lang: string) => (
-                  <span 
-                    key={lang} 
-                    className="px-3 py-1 rounded-full text-sm" 
-                    style={{ 
-                      background: 'var(--color-accent-muted)', 
-                      color: 'var(--color-accent)',
-                      fontSize: '12px'
-                    }}
-                  >
-                    {lang}
-                  </span>
-                ))}
-              </div>
+      <h2 className="text-xl font-semibold mb-5 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        Pinned Repositories
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        {pinnedRepos.map((repo) => (
+          <div
+            key={repo.name}
+            className="p-5 rounded-lg transition-all"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <a href="#" className="text-lg font-semibold no-underline" style={{ color: 'var(--color-accent)' }}>{repo.name}</a>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: 'var(--color-text-muted)', background: 'var(--color-surface-hover)' }}>Public</span>
             </div>
-            <div>
-              <p className="text-xs mb-2" style={{ 
-                color: 'var(--color-text-muted)', 
-                fontSize: '12px'
-              }}>
-                Frameworks
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {skillMap.frameworks.map((fw: string) => (
-                  <span 
-                    key={fw} 
-                    className="px-3 py-1 rounded-full text-sm" 
-                    style={{ 
-                      background: 'rgba(163,113,247,0.15)', 
-                      color: '#a371f7',
-                      fontSize: '12px'
-                    }}
-                  >
-                    {fw}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs mb-2" style={{ 
-                color: 'var(--color-text-muted)', 
-                fontSize: '12px'
-              }}>
-                Domains
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {skillMap.domains.map((d: string) => (
-                  <span 
-                    key={d} 
-                    className="px-3 py-1 rounded-full text-sm" 
-                    style={{ 
-                      background: 'rgba(34,211,238,0.15)', 
-                      color: '#22d3ee',
-                      fontSize: '12px'
-                    }}
-                  >
-                    {d}
-                  </span>
-                ))}
-              </div>
+            <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{repo.description}</p>
+            <div className="flex gap-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: langColors[repo.language || ''] || '#6e7681' }} />
+                {repo.language}
+              </span>
+              <span>★ {repo.stargazersCount}</span>
+              <span>⑂ {repo.forksCount}</span>
             </div>
           </div>
-        </Card>
-
-        {/* Critical Gaps */}
-        <Card style={{ 
-          background: 'var(--color-surface)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: 'var(--radius-md)'
-        }}>
-          <h2 className="section-title" style={{ 
-            padding: '24px', 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            margin: '0',
-            color: 'var(--color-text)',
-            borderBottom: '1px solid var(--color-border)'
-          }}>
-            Critical Gaps
-          </h2>
-          <div className="p-6 space-y-3">
-            {profileAnalysis?.criticalGaps?.map((gap: string, i: number) => (
-              <div key={i} className="flex items-start gap-2">
-                <AlertTriangle 
-                  className="w-4 h-4" 
-                  style={{ 
-                    color: 'var(--color-error)', 
-                    marginTop: '0.5px',
-                    flexShrink: '0'
-                  }}
-                />
-                <span className="text-sm" style={{ 
-                  color: 'var(--color-text)', 
-                  fontSize: '14px'
-                }}>
-                  {gap}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Profile Improvements */}
-        <Card style={{ 
-          background: 'var(--color-surface)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: 'var(--radius-md)'
-        }}>
-          <h2 className="section-title" style={{ 
-            padding: '24px', 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            margin: '0',
-            color: 'var(--color-text)',
-            borderBottom: '1px solid var(--color-border)'
-          }}>
-            Profile Improvements
-          </h2>
-          <div className="p-6 space-y-3">
-            {profileAnalysis?.topImprovements?.map((imp: any, i: number) => (
-              <div key={i} className="p-4 rounded-md" style={{ 
-                background: 'var(--color-surface-hover)', 
-                border: '1px solid var(--color-border)', 
-                marginBottom: '12px'
-              }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span 
-                    className="w-6 h-6 rounded-full flex items-center justify-center font-semibold" 
-                    style={{ 
-                      background: 'var(--color-accent-muted)', 
-                      color: 'var(--color-accent)',
-                      fontSize: '12px'
-                    }}
-                  >
-                    {imp.priority}
-                  </span>
-                  <Badge 
-                    variant={imp.effort === 'low' ? 'success' : imp.effort === 'medium' ? 'warning' : 'danger'}
-                    className="text-xs"
-                  >
-                    {imp.effort}
-                  </Badge>
-                </div>
-                <p className="text-sm" style={{ 
-                  color: 'var(--color-text)', 
-                  fontSize: '14px'
-                }}>
-                  {imp.action}
-                </p>
-                <p className="text-xs mt-1" style={{ 
-                  color: 'var(--color-text-muted)', 
-                  fontSize: '12px'
-                }}>
-                  {imp.impact}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Card>
+        ))}
       </div>
 
-      {/* Pinned Repo Suggestions and Bio Suggestion */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Pinned Repo Suggestions */}
-        <Card style={{ 
-          background: 'var(--color-surface)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: 'var(--radius-md)'
-        }}>
-          <h2 className="section-title" style={{ 
-            padding: '24px', 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            margin: '0',
-            color: 'var(--color-text)',
-            borderBottom: '1px solid var(--color-border)'
-          }}>
-            Pinned Repo Suggestions
-          </h2>
-          <div className="p-6 space-y-2">
-            {profileAnalysis?.pinnedRepoRecommendations?.map((repoName: string, i: number) => {
-              const repo = repos.find(r => r.name === repoName)
-              return (
-                <div key={i} className="flex items-center justify-between p-2 rounded-md" style={{ 
-                  background: 'var(--color-surface-hover)', 
-                  border: '1px solid var(--color-border)'
-                }}>
-                  <span className="text-sm" style={{ 
-                    color: 'var(--color-text)', 
-                    fontSize: '14px'
-                  }}>
-                    {repoName}
-                  </span>
-                  {repo && (
-                    <span className="flex items-center gap-1 text-xs" style={{ 
-                      color: 'var(--color-text-muted)', 
-                      fontSize: '12px'
-                    }}>
-                      <Star className="w-3 h-3" /> {repo.stargazersCount}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Card>
+      <h2 className="text-xl font-semibold mb-5 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Contact
+      </h2>
+      <div
+        className="rounded-lg p-6"
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      >
+        <div className="flex flex-wrap gap-3">
+          {['GitHub', 'LinkedIn', 'Twitter', 'Email'].map((link) => (
+            <a
+              key={link}
+              href={link === 'GitHub' ? `https://github.com/${user.username}` : '#'}
+              className="flex items-center gap-2 px-4 py-2 rounded text-sm no-underline transition-all"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                {link === 'GitHub' && <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>}
+                {link === 'LinkedIn' && <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>}
+                {link === 'Twitter' && <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>}
+              </svg>
+              {link}
+            </a>
+          ))}
+        </div>
+      </div>
 
-        {/* Bio Suggestion */}
-        <Card style={{ 
-          background: 'var(--color-surface)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: 'var(--radius-md)'
-        }}>
-          <h2 className="section-title" style={{ 
-            padding: '24px', 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            margin: '0',
-            color: 'var(--color-text)',
-            borderBottom: '1px solid var(--color-border)'
-          }}>
-            Bio Suggestion
-          </h2>
-          <div className="p-6">
-            {profileAnalysis && (
-              <>
-                <p className="mb-4" style={{ 
-                  color: 'var(--color-text)', 
-                  fontSize: '16px', 
-                  lineHeight: '1.6'
-                }}>
-                  {profileAnalysis.profileBioSuggestion}
-                </p>
-                <Button variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(profileAnalysis.profileBioSuggestion || '')}>
-                  Copy Bio
-                </Button>
-              </>
-            )}
-          </div>
-        </Card>
+      <h2 className="text-xl font-semibold mb-5 mt-8 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+        </svg>
+        Top Languages
+      </h2>
+      <div
+        className="rounded-lg p-6"
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      >
+        <div className="flex h-2.5 rounded-full overflow-hidden mb-4">
+          {langEntries.map(([lang, count]) => (
+            <div key={lang} className="h-full" style={{ background: langColors[lang] || '#6e7681', flex: count }} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {langEntries.map(([lang, count]) => (
+            <div key={lang} className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              <span className="w-3 h-3 rounded-full" style={{ background: langColors[lang] || '#6e7681' }} />
+              {lang} {Math.round((count / langTotal) * 100)}%
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

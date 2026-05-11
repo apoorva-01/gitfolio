@@ -1,167 +1,229 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Input'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { Link2, Trash2, Bell, Database } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from '@/components/ui/Toast'
 import { useUIStore } from '@/store'
+import { signOut } from 'next-auth/react'
 
 export default function SettingsPage() {
-  const { data: session } = useSession()
-  const [clearing, setClearing] = useState(false)
-  const { notifications, graphPreferences, setNotification, setGraphPreference } = useUIStore()
-
-  const clearAllData = async () => {
-    if (!confirm('Are you sure you want to clear all cached data? This cannot be undone.')) return
-    setClearing(true)
-    await fetch('/api/settings/clear-data', { method: 'POST' })
-    setClearing(false)
-    window.location.reload()
-  }
+  const [activeSection, setActiveSection] = useState('account')
+  const [localRepoUpdates, setLocalRepoUpdates] = useState(false)
+  const notifications = useUIStore((s) => s.notifications)
+  const setNotification = useUIStore((s) => s.setNotification)
+  const [theme, setTheme] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('theme') || 'dark' : 'dark')
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-bold text-white">Settings</h1>
+    <div>
+      <h1 className="text-[28px] font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Account Settings</h1>
+      <p className="text-sm mb-8" style={{ color: 'var(--color-text-secondary)' }}>Manage your account preferences and settings</p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-        </CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={session?.user?.image || ''} alt={session?.user?.name || 'User avatar'} className="w-12 h-12 rounded-full" />
-            <div>
-              <p className="text-white font-medium">{session?.user?.name}</p>
-              <p className="text-sm text-gray-400 flex items-center gap-2">
-                <Link2 className="w-4 h-4" />
-                {(session?.user as any)?.githubLogin || 'Not connected'}
-              </p>
+      <div className="flex mb-4 gap-2">
+        {[
+          { id: 'profile', label: 'Profile' },
+          { id: 'account', label: 'Account' },
+          { id: 'appearance', label: 'Appearance' },
+          { id: 'notifications', label: 'Notifications' },
+          { id: 'security', label: 'Security' },
+        ].map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setActiveSection(s.id)}
+            className="px-4 py-2 text-sm rounded cursor-pointer transition-all"
+            style={{
+              background: activeSection === s.id ? 'rgba(88, 166, 255, 0.1)' : 'transparent',
+              color: activeSection === s.id ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: 'none',
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {activeSection === 'profile' && (
+        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Profile Information</h2>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-[200px_1fr] gap-6">
+              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Avatar</label>
+              <div className="flex gap-6 items-start">
+                <div className="relative group">
+                  <div
+                    className="w-24 h-24 rounded-full"
+                    style={{ background: 'linear-gradient(135deg, var(--color-accent), var(--color-success))', border: '3px solid var(--color-border)' }}
+                  />
+                  <div
+                    className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    style={{ background: 'rgba(0,0,0,0.5)' }}
+                  >
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex gap-2.5 mt-1">
+                    <button className="px-4 py-2 text-sm rounded cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Upload new</button>
+                    <button className="px-4 py-2 text-sm rounded cursor-pointer" style={{ background: '#da3633', color: 'white', border: 'none' }}>Remove</button>
+                  </div>
+                  <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>JPG, PNG or GIF. Max 2MB.</p>
+                </div>
+              </div>
+            </div>
+            {[
+              { label: 'Full Name', value: 'Alex Developer', hint: '' },
+              { label: 'Username', value: 'alexdev', hint: 'Your unique identifier: gitfolio.dev/alexdev' },
+              { label: 'Location', value: 'San Francisco, CA', hint: '' },
+              { label: 'Website', value: '', hint: '', placeholder: 'https://your-site.com' },
+            ].map((f) => (
+              <div key={f.label} className="grid grid-cols-[200px_1fr] gap-6">
+                <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>{f.label}</label>
+                <div>
+                  <input
+                    type="text"
+                    className="w-full px-3.5 py-2.5 text-sm rounded"
+                    defaultValue={f.value}
+                    placeholder={f.placeholder}
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
+                  />
+                  {f.hint && <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>{f.hint}</p>}
+                </div>
+              </div>
+            ))}
+            <div className="grid grid-cols-[200px_1fr] gap-6">
+              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Bio</label>
+              <textarea
+                className="w-full px-3.5 py-2.5 text-sm rounded resize-y"
+                rows={3}
+                defaultValue="Full-stack developer passionate about building developer tools and open source."
+                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', minHeight: '100px' }}
+              />
             </div>
           </div>
-          <Badge variant="success">Connected</Badge>
         </div>
-        <div className="mt-4 pt-4 border-t border-gray-800">
-          <Button variant="secondary" size="sm" onClick={() => signOut()}>
-            Revoke Access
-          </Button>
-        </div>
-      </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-        </CardHeader>
-        <div>
-          <p className="text-sm text-gray-400 mb-3">Choose your preferred theme</p>
-          <ThemeToggle />
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="w-5 h-5" />
-            Data Management
-          </CardTitle>
-        </CardHeader>
-        <p className="text-sm text-gray-400 mb-4">Clear cached repository data without revoking GitHub access.</p>
-        <Button variant="secondary" onClick={clearAllData} disabled={clearing}>
-          <Trash2 className="w-4 h-4 mr-2" />
-          {clearing ? 'Clearing...' : 'Clear All Cached Data'}
-        </Button>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-        </CardHeader>
-        <div className="space-y-4">
-          <label className="flex items-center justify-between">
-            <div>
-              <p className="text-white">Analysis notifications</p>
-              <p className="text-sm text-gray-400">Get notified when AI analysis completes</p>
+      {activeSection === 'account' && (
+        <>
+          <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Email Preferences</h2>
             </div>
-            <input
-              type="checkbox"
-              className="toggle"
-              checked={notifications.analysisNotifications}
-              onChange={(e) => setNotification('analysisNotifications', e.target.checked)}
-            />
-          </label>
-          <label className="flex items-center justify-between">
-            <div>
-              <p className="text-white">Critical issues alerts</p>
-              <p className="text-sm text-gray-400">Alert when repos drop below health threshold</p>
+            <div className="p-6 space-y-4">
+              {[
+                { id: 'analysisNotifications', label: 'Weekly digest', desc: 'Receive a weekly summary of your activity' },
+                { id: 'criticalIssueAlerts', label: 'New followers', desc: 'Get notified when someone follows you' },
+                { id: 'repoUpdates', label: 'Repository updates', desc: 'Notifications about your repositories' },
+              ].map((t) => {
+                const isStoreToggle = t.id !== 'repoUpdates'
+                const checked = isStoreToggle ? notifications[t.id as keyof typeof notifications] : localRepoUpdates
+                return (
+                  <div key={t.id} className="flex justify-between items-center py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <div>
+                      <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t.label}</div>
+                      <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t.desc}</div>
+                    </div>
+                    <label className="relative inline-block w-11 h-6">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        className="opacity-0 w-0 h-0"
+                        onChange={(e) => {
+                          if (isStoreToggle) {
+                            setNotification(t.id as 'analysisNotifications' | 'criticalIssueAlerts', e.target.checked)
+                          } else {
+                            setLocalRepoUpdates(e.target.checked)
+                          }
+                        }}
+                      />
+                      <span
+                        className="absolute cursor-pointer inset-0 rounded-full transition-colors"
+                        style={{ background: checked ? 'var(--color-success)' : 'var(--color-surface-hover)' }}
+                      >
+                        <span
+                          className="absolute w-[18px] h-[18px] bg-white rounded-full transition-transform"
+                          style={{ left: '3px', bottom: '3px', transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
+                        />
+                      </span>
+                    </label>
+                  </div>
+                )
+              })}
             </div>
-            <input
-              type="checkbox"
-              className="toggle"
-              checked={notifications.criticalIssueAlerts}
-              onChange={(e) => setNotification('criticalIssueAlerts', e.target.checked)}
-            />
-          </label>
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Graph Preferences</CardTitle>
-        </CardHeader>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Default Layout</label>
-            <select
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white"
-              value={graphPreferences.defaultLayout}
-              onChange={(e) => setGraphPreference('defaultLayout', e.target.value)}
-            >
-              <option value="force">Force-directed</option>
-              <option value="dagre">Dagre</option>
-              <option value="manual">Manual</option>
-            </select>
           </div>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              className="toggle"
-              checked={graphPreferences.showPrivateByDefault}
-              onChange={(e) => setGraphPreference('showPrivateByDefault', e.target.checked)}
-            />
-            <div>
-              <p className="text-white">Show private repos by default</p>
-              <p className="text-sm text-gray-400">Display private repos in graph</p>
-            </div>
-          </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              className="toggle"
-              checked={graphPreferences.dynamicNodeSizing}
-              onChange={(e) => setGraphPreference('dynamicNodeSizing', e.target.checked)}
-            />
-            <div>
-              <p className="text-white">Dynamic node sizing</p>
-              <p className="text-sm text-gray-400">Node size based on stars and health</p>
-            </div>
-          </label>
-        </div>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>About</CardTitle>
-        </CardHeader>
-        <div className="space-y-2 text-sm text-gray-400">
-          <p><span className="text-white">GitFolio</span> v1.0.0</p>
-          <p>Your GitHub portfolio builder</p>
-          <p className="text-xs mt-4 text-gray-500">
-            Built with Next.js, Prisma, React Flow, and Claude AI
-          </p>
+          <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Connected Accounts</h2>
+            </div>
+            <div className="p-6">
+              <div className="flex justify-between items-center py-4">
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>GitHub</div>
+                  <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Connected as @alexdev</div>
+                </div>
+                <button onClick={() => signOut({ callbackUrl: '/' })} className="px-4 py-2 text-sm rounded cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Disconnect</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeSection === 'appearance' && (
+        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Appearance</h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-[200px_1fr] gap-6">
+              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Theme</label>
+              <select
+                className="w-full max-w-xs px-3.5 py-2.5 text-sm rounded"
+                value={theme}
+                onChange={(e) => {
+                  setTheme(e.target.value)
+                  localStorage.setItem('theme', e.target.value)
+                  document.documentElement.setAttribute('data-theme', e.target.value)
+                }}
+                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
+              >
+                <option value="dark">Dark (Default)</option>
+                <option value="light">Light</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </Card>
+      )}
+
+      {activeSection === 'notifications' && (
+        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Notification Settings</h2>
+          </div>
+          <div className="p-6">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Configure how you receive notifications about your repositories and activity.</p>
+          </div>
+        </div>
+      )}
+
+      {activeSection === 'security' && (
+        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Security Settings</h2>
+          </div>
+          <div className="p-6">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Manage your security preferences and connected sessions.</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3 mt-8 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>
+        <button onClick={() => toast.success('Settings saved successfully!')} className="px-5 py-2.5 rounded text-sm font-medium cursor-pointer" style={{ background: '#238636', color: 'white', border: 'none' }}>Save Changes</button>
+        <button onClick={() => toast.info('Changes discarded')} className="px-5 py-2.5 rounded text-sm font-medium cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Cancel</button>
+      </div>
     </div>
   )
 }

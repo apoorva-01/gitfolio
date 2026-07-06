@@ -1,203 +1,206 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { signIn } from 'next-auth/react'
-import { useUIStore } from '@/store'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { useRepositories } from '@/hooks/useRepositories'
+import { useUser, useUpdateUser } from '@/hooks/useUser'
+import { Logo, Card, Button, Icon, Avatar, Chip, AIBadge, type IconName } from '@/components/gf/primitives'
+import { SITE_HOST } from '@/lib/site'
 import { toast } from '@/components/ui/Toast'
+import type { Repository } from '@/store'
 
-const steps = [
-  { title: 'Connect Your GitHub', subtitle: 'Sign in with GitHub to import your repositories, contributions, and profile information automatically.' },
-  { title: 'Import Repositories', subtitle: 'Select which repositories to import to your portfolio.' },
-  { title: 'Customize Profile', subtitle: 'Add a bio, location, and links to showcase who you are.' },
-  { title: 'Choose Theme', subtitle: 'Pick a theme that matches your style.' },
-]
+const TOTAL = 4
 
-const features = [
-  { title: 'Auto-sync repositories', desc: 'All your public repos imported automatically', icon: 'folder' },
-  { title: 'Contribution history', desc: 'Track your coding activity over time', icon: 'activity' },
-  { title: 'Profile sync', desc: 'Your bio, avatar, and links imported', icon: 'user' },
-]
-
-function FeatureIcon({ type }: { type: string }) {
-  const props = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }
-  if (type === 'folder') return <svg {...props}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-  if (type === 'activity') return <svg {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-  return <svg {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-}
-
-export default function OnboardingPage() {
-  const [step, setStep] = useState(1)
-
+function OnboardingShell({ step, title, subtitle, children, footer }: { step: number; title: string; subtitle?: string; children: ReactNode; footer: ReactNode }) {
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-ui)' }}>
-      <div className="flex-1 p-12 flex flex-col justify-center" style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>
-        <Link href="/" className="flex items-center gap-2.5 font-bold text-lg no-underline mb-12" style={{ color: 'var(--color-text)' }}>
-          <svg viewBox="0 0 32 32" width="32" height="32" fill="none">
-            <rect width="32" height="32" rx="6" fill="#161b22"/>
-            <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" strokeWidth="2" fill="none"/>
-            <path d="M12 16l3 3 5-6" stroke="#3fb950" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          GitFolio
-        </Link>
-
-        <div className="flex gap-3 mb-10">
-          {[1, 2, 3, 4].map((s) => (
-            <div
-              key={s}
-              className="w-3 h-3 rounded-full transition-all"
-              style={{
-                background: s < step ? 'var(--color-success)' : s === step ? 'var(--color-accent)' : 'var(--color-surface-hover)',
-                border: `2px solid ${s === step ? 'var(--color-accent)' : s < step ? 'var(--color-success)' : 'var(--color-border)'}`,
-              }}
-            />
-          ))}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
+      <div style={{ height: 56, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
+        <Logo size={26} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--text-2)' }}>
+          <span>Step {step} of {TOTAL}</span>
+          <div style={{ width: 220, height: 4, borderRadius: 2, background: 'var(--surface-2)', overflow: 'hidden' }}>
+            <div style={{ width: `${(step / TOTAL) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 2, transition: 'width .3s' }} />
+          </div>
         </div>
-
-        <h1 className="text-[32px] font-bold mb-4">{step === 1 ? steps[0].title : step === 2 ? steps[1].title : step === 3 ? steps[2].title : steps[3].title}</h1>
-        <p className="text-base mb-8 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-          {step === 1 ? steps[0].subtitle : step === 2 ? steps[1].subtitle : step === 3 ? steps[2].subtitle : steps[3].subtitle}
-        </p>
-
-        {step === 1 && (
-          <>
-            <button
-              onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded text-sm font-medium cursor-pointer transition-all"
-              style={{ background: '#24292f', color: 'white', border: 'none' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-              Continue with GitHub
-            </button>
-            <p className="text-xs mt-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
-              By continuing, you agree to our Terms of Service and Privacy Policy
-            </p>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <div className="space-y-3 mb-6">
-              {['react-components', 'design-system', 'api-client'].map((r) => (
-                <label
-                  key={r}
-                  className="flex items-center gap-3 px-4 py-3 rounded cursor-pointer"
-                  style={{ background: 'var(--color-bg)' }}
-                >
-                  <input type="checkbox" defaultChecked className="accent-[var(--color-accent)]" />
-                  <span className="text-sm" style={{ color: 'var(--color-text)' }}>{r}</span>
-                  <span className="text-xs ml-auto" style={{ color: 'var(--color-text-muted)' }}>TypeScript</span>
-                </label>
-              ))}
-            </div>
-            <button onClick={() => setStep(3)} className="w-full py-3.5 rounded text-sm font-medium cursor-pointer" style={{ background: '#238636', color: 'white', border: 'none' }}>Continue</button>
-          </>
-        )}
-
-        {step >= 3 && (
-          <>
-            <div className="flex items-center gap-4 mb-6">
-              {['bio', 'location', 'links'].map((f) => (
-                <div key={f} className="flex-1 h-2 rounded-full" style={{ background: f === 'bio' ? 'var(--color-surface-hover)' : 'var(--color-success)' }} />
-              ))}
-            </div>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium mb-2">Bio</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 text-sm rounded"
-                  placeholder="Tell us about yourself..."
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Location</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 text-sm rounded"
-                  placeholder="City, Country"
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Website</label>
-                <input
-                  type="url"
-                  className="w-full px-4 py-3 text-sm rounded"
-                  placeholder="https://your-site.com"
-                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                />
-              </div>
-            </div>
-            <button onClick={() => setStep(4)} className="w-full py-3.5 rounded text-sm font-medium cursor-pointer mt-6" style={{ background: '#238636', color: 'white', border: 'none' }}>Continue</button>
-          </>
-        )}
-
-        {step === 3 && <div className="mt-auto"><h3 className="font-semibold mb-4">What you&apos;ll get:</h3><div className="flex flex-col gap-5">{features.map((f) => (<div key={f.title} className="flex gap-4 items-start"><div className="w-12 h-12 flex items-center justify-center rounded flex-shrink-0" style={{ background: 'rgba(88, 166, 255, 0.1)', color: 'var(--color-accent)' }}><FeatureIcon type={f.icon} /></div><div><h3 className="font-semibold mb-1">{f.title}</h3><p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{f.desc}</p></div></div>))}</div></div>}
+        <Button variant="ghost" size="sm" href="/dashboard">Save & exit</Button>
       </div>
-
-      <div className="flex-1 p-12 flex flex-col justify-center">
-        <div className="max-w-[400px] mx-auto w-full">
-          <Link href="/" className="flex items-center gap-2.5 font-bold text-lg no-underline mb-8" style={{ color: 'var(--color-text)' }}>
-            <svg viewBox="0 0 32 32" width="32" height="32" fill="none">
-              <rect width="32" height="32" rx="6" fill="#161b22"/>
-              <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#58a6ff" strokeWidth="2" fill="none"/>
-              <path d="M12 16l3 3 5-6" stroke="#3fb950" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            GitFolio
-          </Link>
-
-          {step === 1 && (
-            <>
-              <h1 className="text-[28px] font-bold mb-4">Or sign up with email</h1>
-              <p className="text-base mb-8" style={{ color: 'var(--color-text-secondary)' }}>Create an account to get started without connecting GitHub.</p>
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Full Name</label>
-                  <input type="text" className="w-full px-4 py-3 text-sm rounded" placeholder="John Doe" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
-                  <input type="email" className="w-full px-4 py-3 text-sm rounded" placeholder="you@example.com" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Password</label>
-                  <input type="password" className="w-full px-4 py-3 text-sm rounded" placeholder="••••••••" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
-                  <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>Must be at least 8 characters</p>
-                </div>
-                <button onClick={() => toast.info('Email sign-up coming soon. Use GitHub to get started.')} className="w-full py-3.5 rounded text-sm font-medium cursor-pointer" style={{ background: '#238636', color: 'white', border: 'none' }}>Create Account</button>
-              </div>
-              <p className="mt-6 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                Already have an account? <Link href="/auth/login" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
-              </p>
-            </>
-          )}
-
-          {step === 4 && (
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(63, 185, 80, 0.15)' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3fb950" strokeWidth="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <h1 className="text-[28px] font-bold mb-4">You&apos;re All Set!</h1>
-              <p className="text-base mb-8" style={{ color: 'var(--color-text-secondary)' }}>Your portfolio is ready to go. Start exploring your dashboard.</p>
-              <Link
-                href="/dashboard"
-                onClick={() => {
-                  fetch('/api/onboarding/complete', { method: 'POST' })
-                  useUIStore.getState().setOnboardingComplete(true)
-                }}
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded text-sm font-medium no-underline"
-                style={{ background: '#238636', color: 'white' }}
-              >
-                Go to Dashboard →
-              </Link>
-            </div>
-          )}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '100%', maxWidth: 720, padding: '48px 24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
+            {Array.from({ length: TOTAL }).map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < step ? 'var(--accent)' : 'var(--surface-2)' }} />
+            ))}
+          </div>
+          <div style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -1, color: 'var(--text)', margin: 0 }}>{title}</h1>
+            {subtitle && <p style={{ fontSize: 15, color: 'var(--text-2)', marginTop: 8, lineHeight: 1.5 }}>{subtitle}</p>}
+          </div>
+          <div style={{ flex: 1 }}>{children}</div>
+          <div style={{ marginTop: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{footer}</div>
         </div>
       </div>
     </div>
+  )
+}
+
+function ScopeRow({ icon, title, body, required }: { icon: IconName; title: string; body: string; required?: boolean }) {
+  const Ico = Icon[icon]
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-soft)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Ico size={15} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{body}</div>
+      </div>
+      <Chip color={required ? 'var(--text-2)' : 'var(--success)'} dot>{required ? 'Required' : 'Granted'}</Chip>
+    </div>
+  )
+}
+
+const THEMES = [
+  { name: 'Tessera', desc: 'Vercel-leaning · dark/light · code-first', preview: 'linear-gradient(135deg, #0a0a0b 0%, #141416 100%)' },
+  { name: 'Linear Pro', desc: 'Dense · saturated · sidebar nav', preview: 'linear-gradient(135deg, #16161a 0%, #5e5ce6 100%)' },
+  { name: 'Brutalist', desc: 'High-contrast · sans-serif · grid', preview: 'linear-gradient(135deg, #fafafa 0%, #e4e4e7 100%)' },
+  { name: 'Terminal', desc: 'Mono everything · CRT vibes', preview: 'radial-gradient(ellipse at center, #1a3d2e 0%, #050a08 100%)' },
+  { name: 'Editorial', desc: 'Serif · long-form · readable', preview: 'linear-gradient(135deg, #f5f1eb 0%, #d4c5b5 100%)' },
+  { name: 'Aurora', desc: 'Gradient-rich · marketing-feel', preview: 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)' },
+]
+
+const inputStyle: React.CSSProperties = { width: '100%', height: 40, padding: '0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }
+const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }
+
+export default function OnboardingPage() {
+  const router = useRouter()
+  const { data: session } = useSession()
+  const { repos } = useRepositories()
+  const { data: profile } = useUser()
+  const updateUser = useUpdateUser()
+  const [step, setStep] = useState(1)
+  const [theme, setTheme] = useState('Tessera')
+  const [shipping, setShipping] = useState(false)
+  const [name, setName] = useState('')
+  const [bio, setBio] = useState('')
+  const [seeded, setSeeded] = useState(false)
+
+  const user = session?.user
+  const login = (user as { githubLogin?: string } | undefined)?.githubLogin || 'you'
+
+  useEffect(() => {
+    if (!seeded && (session || profile)) {
+      setName(profile?.name || user?.name || '')
+      setBio(profile?.bio || '')
+      setSeeded(true)
+    }
+  }, [session, profile, user, seeded])
+
+  const saveStep2 = () => {
+    const patch = { name: name.trim() || (user?.name || 'Developer'), bio: bio.trim() }
+    updateUser.mutate(patch, { onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not save') })
+    setStep(3)
+  }
+  const stars = repos.reduce((s: number, r: Repository) => s + (r.stargazersCount || 0), 0)
+  const langCount = new Set(repos.map((r: Repository) => r.language).filter(Boolean)).size
+
+  const back = <Button variant="ghost" onClick={() => setStep((s) => Math.max(1, s - 1))}>← Back</Button>
+
+  const ship = () => {
+    setShipping(true)
+    fetch('/api/onboarding/complete', { method: 'POST' })
+      .then(() => { toast.success('Your GitFolio is live!'); router.push('/dashboard') })
+      .catch(() => { setShipping(false); toast.error('Could not finish setup') })
+  }
+
+  if (step === 1) return (
+    <OnboardingShell step={1} title="Connect your GitHub" subtitle="GitFolio uses read-only OAuth. We never see your private code — only the metadata you authorize."
+      footer={<><span /><Button size="lg" iconRight={<Icon.ArrowR size={14} />} onClick={() => setStep(2)}>Continue</Button></>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <ScopeRow icon="User" title="Read your public profile" body="Name, bio, avatar, follower count" />
+        <ScopeRow icon="Repo" title="List your repositories" body="Names, descriptions, topics, languages, stars, forks" />
+        <ScopeRow icon="Code" title="Read repository metadata" body="READMEs and dependencies — public repos by default" />
+        <ScopeRow icon="Github" title="Signed in" body={`Connected as @${login}`} />
+      </div>
+      <div style={{ marginTop: 24, padding: 16, borderRadius: 10, background: 'var(--ai-soft)', border: '1px solid color-mix(in oklab, var(--ai) 22%, transparent)', display: 'flex', gap: 12 }}>
+        <Icon.Sparkle size={16} style={{ color: 'var(--ai)', marginTop: 2, flexShrink: 0 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>What we&apos;ll do with this</div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4, lineHeight: 1.5 }}>Claude reads your repo metadata to draft a bio, suggest pinned repos, and surface insights. You approve every AI output before it ships.</div>
+        </div>
+      </div>
+    </OnboardingShell>
+  )
+
+  if (step === 2) return (
+    <OnboardingShell step={2} title="Make it yours" subtitle="Claude drafts these from your GitHub. Edit anything."
+      footer={<>{back}<Button size="lg" iconRight={<Icon.ArrowR size={14} />} onClick={saveStep2}>Continue</Button></>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div><label style={labelStyle}>Display name</label><input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} style={inputStyle} /></div>
+        <div>
+          <label style={labelStyle}>Tagline</label>
+          <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={2} placeholder="What do you build?" style={{ ...inputStyle, height: 'auto', padding: 12, resize: 'none', lineHeight: 1.5 }} />
+        </div>
+        <div>
+          <label style={labelStyle}>Your URL</label>
+          <div style={{ display: 'flex', alignItems: 'center', height: 40, padding: '0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }}>
+            <span className="mono" style={{ fontSize: 13, color: 'var(--text-3)' }}>{SITE_HOST}/</span>
+            <input defaultValue={login} className="mono" style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+            <Icon.Check size={14} style={{ color: 'var(--success)' }} />
+          </div>
+        </div>
+      </div>
+    </OnboardingShell>
+  )
+
+  if (step === 3) return (
+    <OnboardingShell step={3} title="Pick a starting point" subtitle="Every theme is open MDX — fork and edit, or stay close to the source."
+      footer={<>{back}<Button size="lg" iconRight={<Icon.ArrowR size={14} />} onClick={() => setStep(4)}>Continue with {theme}</Button></>}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        {THEMES.map((t) => {
+          const selected = t.name === theme
+          return (
+            <div key={t.name} onClick={() => setTheme(t.name)} style={{
+              border: `1.5px solid ${selected ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+              background: 'var(--surface)', boxShadow: selected ? '0 0 0 4px var(--accent-soft)' : 'none', position: 'relative',
+            }}>
+              <div style={{ height: 120, background: t.preview, position: 'relative', borderBottom: '1px solid var(--border)' }}>
+                {selected && <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><Icon.Check size={12} /></div>}
+              </div>
+              <div style={{ padding: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{t.desc}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </OnboardingShell>
+  )
+
+  return (
+    <OnboardingShell step={4} title="Ready to launch" subtitle="Your GitFolio is built. Hit ship and you're live in seconds."
+      footer={<>{back}<Button size="lg" icon={<Icon.Bolt size={14} />} onClick={ship}>{shipping ? 'Shipping…' : 'Ship it'}</Button></>}>
+      <Card padding={24}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+          <Avatar src={user?.image} name={name || 'Your name'} size={56} ring />
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4 }}>{name || 'Your name'}</div>
+            <div className="mono" style={{ fontSize: 13, color: 'var(--accent)' }}>{SITE_HOST}/{login}</div>
+          </div>
+          <div style={{ marginLeft: 'auto' }}><AIBadge>AI generated</AIBadge></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '12px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+          <div><div style={{ fontSize: 18, fontWeight: 700 }}>{repos.length}</div><div style={{ fontSize: 11, color: 'var(--text-3)' }}>Repos</div></div>
+          <div><div style={{ fontSize: 18, fontWeight: 700 }}>{stars.toLocaleString()}</div><div style={{ fontSize: 11, color: 'var(--text-3)' }}>Stars</div></div>
+          <div><div style={{ fontSize: 18, fontWeight: 700 }}>{langCount}</div><div style={{ fontSize: 11, color: 'var(--text-3)' }}>Languages</div></div>
+        </div>
+        <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[`Theme: ${theme}`, 'AI bio drafted (edit anytime)', 'Top repos auto-pinned by stars', 'Contribution heatmap enabled'].map((line, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon.Check size={12} style={{ color: 'var(--success)' }} /><span>{line}</span></div>
+          ))}
+        </div>
+      </Card>
+    </OnboardingShell>
   )
 }

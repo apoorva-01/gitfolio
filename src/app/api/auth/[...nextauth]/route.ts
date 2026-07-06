@@ -57,6 +57,7 @@ export const authOptions: AuthOptions = {
         if (dbUser) {
           (session.user as { id: string; githubLogin: string }).id = dbUser.id
           ;(session.user as { id: string; githubLogin: string }).githubLogin = dbUser.githubLogin
+          if (dbUser.name) session.user.name = dbUser.name
         }
       }
       return session

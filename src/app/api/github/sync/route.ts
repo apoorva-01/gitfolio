@@ -32,8 +32,34 @@ export async function POST() {
   const startTime = Date.now()
   const github = new GitHubClient(user.githubAccessToken)
 
-  async function syncRepo(repo: GitHubRepo): Promise<{ success: boolean; repo: string; error?: string }> {
+  // Incremental sync: repos whose pushed_at is unchanged since last sync skip the 4 per-repo API calls.
+  const existingPushed = new Map(
+    (await prisma.repository.findMany({ where: { userId }, select: { githubId: true, pushedAt: true } }))
+      .map((r) => [r.githubId, r.pushedAt] as const)
+  )
+
+  async function syncRepo(repo: GitHubRepo): Promise<{ success: boolean; repo: string; error?: string; skipped?: boolean }> {
     try {
+      const prevPushed = existingPushed.get(repo.id)
+      const repoPushed = repo.pushed_at ? new Date(repo.pushed_at) : null
+      if (prevPushed && repoPushed && repoPushed.getTime() <= prevPushed.getTime()) {
+        // Unchanged — refresh only the cheap list-derived fields (stars/forks/etc.), keep the rest.
+        await prisma.repository.update({
+          where: { githubId: repo.id },
+          data: {
+            description: repo.description,
+            stargazersCount: repo.stargazers_count,
+            forksCount: repo.forks_count,
+            watchersCount: repo.watchers_count,
+            openIssuesCount: repo.open_issues_count,
+            topics: repo.topics,
+            isPrivate: repo.private,
+            isFork: repo.fork,
+          },
+        })
+        return { success: true, repo: repo.full_name, skipped: true }
+      }
+
       const [owner, repoName] = repo.full_name.split('/')
       const [languages, readme, deps] = await Promise.all([
         github.getRepositoryLanguages(owner, repoName),
@@ -116,25 +142,27 @@ export async function POST() {
     }
   }
 
-  async function processBatch(repos: GitHubRepo[], batchNum: number, totalBatches: number): Promise<{ synced: number; failed: number }> {
+  async function processBatch(repos: GitHubRepo[], batchNum: number, totalBatches: number): Promise<{ synced: number; failed: number; skipped: number }> {
     console.log(`[Sync] Processing batch ${batchNum}/${totalBatches} (${repos.length} repos)`)
-    
+
     const results = await Promise.allSettled(repos.map(repo => syncRepo(repo)))
-    
+
     let synced = 0
     let failed = 0
+    let skipped = 0
     results.forEach((result, i) => {
       if (result.status === 'fulfilled' && result.value.success) {
         synced++
+        if (result.value.skipped) skipped++
       } else {
         failed++
         const error = result.status === 'rejected' ? result.reason : result.value.error
         console.error(`[Sync] Failed to sync ${repos[i]?.full_name}:`, error)
       }
     })
-    
-    console.log(`[Sync] Batch ${batchNum} complete: ${synced} synced, ${failed} failed`)
-    return { synced, failed }
+
+    console.log(`[Sync] Batch ${batchNum} complete: ${synced} synced (${skipped} unchanged), ${failed} failed`)
+    return { synced, failed, skipped }
   }
 
   try {
@@ -150,18 +178,21 @@ export async function POST() {
     const totalBatches = batches.length
     let totalSynced = 0
     let totalFailed = 0
+    let totalSkipped = 0
 
     for (let i = 0; i < batches.length; i++) {
-      const { synced, failed } = await processBatch(batches[i], i + 1, totalBatches)
+      const { synced, failed, skipped } = await processBatch(batches[i], i + 1, totalBatches)
       totalSynced += synced
       totalFailed += failed
+      totalSkipped += skipped
 
-      if (i < batches.length - 1) {
+      // Only pause for rate limits when the batch actually hit the API (i.e. had changed repos).
+      if (i < batches.length - 1 && synced - skipped > 0) {
         await github.handleRateLimit()
       }
     }
 
-    console.log(`[Sync] Complete: ${totalSynced} synced, ${totalFailed} failed in ${Date.now() - startTime}ms`)
+    console.log(`[Sync] Complete: ${totalSynced} synced (${totalSkipped} unchanged), ${totalFailed} failed in ${Date.now() - startTime}ms`)
 
     // Profile + contribution calendar (2 API calls). Never touches bio/name — those are user-editable.
     try {
@@ -200,6 +231,7 @@ export async function POST() {
 
     return NextResponse.json({
       synced: totalSynced,
+      skipped: totalSkipped,
       failed: totalFailed,
       total: ghRepos.length,
       duration: Date.now() - startTime,

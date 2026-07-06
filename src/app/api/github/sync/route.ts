@@ -163,6 +163,41 @@ export async function POST() {
 
     console.log(`[Sync] Complete: ${totalSynced} synced, ${totalFailed} failed in ${Date.now() - startTime}ms`)
 
+    // Profile + contribution calendar (2 API calls). Never touches bio/name — those are user-editable.
+    try {
+      const [profile, contributions] = await Promise.all([
+        github.getUserProfile(),
+        github.getContributionCalendar(user.githubLogin),
+      ])
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          followers: profile.followers,
+          following: profile.following,
+          location: profile.location,
+          company: profile.company,
+          blog: profile.blog,
+          twitterUsername: profile.twitter_username,
+          githubCreatedAt: profile.created_at ? new Date(profile.created_at) : null,
+          contributions: contributions as any,
+        },
+      })
+    } catch (e) {
+      console.error('[Sync] Profile/calendar fetch failed:', e)
+    }
+
+    // Snapshot for historical deltas (one row per sync).
+    const synced = await prisma.repository.findMany({ where: { userId }, select: { stargazersCount: true, forksCount: true, healthScore: true } })
+    if (synced.length > 0) {
+      const totalStars = synced.reduce((s, r) => s + r.stargazersCount, 0)
+      const totalForks = synced.reduce((s, r) => s + r.forksCount, 0)
+      const avgHealth = synced.reduce((s, r) => s + (r.healthScore || 0), 0) / synced.length
+      const fresh = await prisma.user.findUnique({ where: { id: userId }, select: { followers: true } })
+      await prisma.profileSnapshot.create({
+        data: { userId, repoCount: synced.length, totalStars, totalForks, followers: fresh?.followers || 0, avgHealth },
+      })
+    }
+
     return NextResponse.json({
       synced: totalSynced,
       failed: totalFailed,

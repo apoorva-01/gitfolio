@@ -16,12 +16,35 @@ model User {
   githubLogin          String          @unique
   githubAccessToken    String?
   hasCompletedOnboarding Boolean       @default(false)
+  followers            Int?
+  following            Int?
+  location             String?
+  company              String?
+  blog                 String?
+  twitterUsername      String?
+  githubCreatedAt      DateTime?
+  contributions        Json?
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
   repositories         Repository[]
   analyses             RepoAnalysis[]
   profileAnalyses      ProfileAnalysis[]
   graphSnapshots       GraphSnapshot[]
+  profileSnapshots     ProfileSnapshot[]
+}
+
+model ProfileSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  repoCount   Int
+  totalStars  Int
+  totalForks  Int
+  followers   Int      @default(0)
+  avgHealth   Float    @default(0)
+  capturedAt  DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, capturedAt])
 }
 
 model Repository {

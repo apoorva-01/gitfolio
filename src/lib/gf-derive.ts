@@ -31,3 +31,49 @@ export function deriveLanguages(repos: Repository[], topN = 6): LangSlice[] {
   if (sum === 0) return []
   return entries.sort((a, b) => b[1] - a[1]).slice(0, topN).map(([name, v]) => ({ name, pct: (v / sum) * 100 }))
 }
+
+export type ContribDay = { date: string; count: number }
+
+/** GitHub daily contribution calendar → 53×7 grid (grid[week][weekday], weekday 0=Sun). */
+export function contributionsToGrid(days: ContribDay[]): number[][] {
+  const grid: number[][] = Array.from({ length: 53 }, () => Array(7).fill(0))
+  if (!days.length) return grid
+  const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
+  const first = new Date(sorted[0].date + 'T00:00:00Z')
+  const startCol = first.getUTCDay() // pad the first (partial) week so columns land on the right weekday
+  for (const d of sorted) {
+    const dt = new Date(d.date + 'T00:00:00Z')
+    const offset = Math.round((dt.getTime() - first.getTime()) / 86400000) + startCol
+    const week = Math.floor(offset / 7)
+    if (week >= 0 && week < 53) grid[week][dt.getUTCDay()] = d.count
+  }
+  return grid
+}
+
+/** Total contributions in the calendar. */
+export function contributionsTotal(days: ContribDay[]): number {
+  return days.reduce((s, d) => s + d.count, 0)
+}
+
+/** Contribution counts summed by weekday (index 0=Sun … 6=Sat). */
+export function contributionsByWeekday(days: ContribDay[]): number[] {
+  const out = Array(7).fill(0)
+  for (const d of days) out[new Date(d.date + 'T00:00:00Z').getUTCDay()] += d.count
+  return out
+}
+
+/** Contribution counts bucketed into the last 12 calendar months. */
+export function contributionsByMonth(days: ContribDay[], now = new Date()): { label: string; value: number }[] {
+  const buckets = Array(12).fill(0)
+  const labels: string[] = []
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (11 - i), 1))
+    labels.push(d.toLocaleString('en', { month: 'short', timeZone: 'UTC' }))
+  }
+  for (const d of days) {
+    const dt = new Date(d.date + 'T00:00:00Z')
+    const monthsAgo = (now.getUTCFullYear() - dt.getUTCFullYear()) * 12 + (now.getUTCMonth() - dt.getUTCMonth())
+    if (monthsAgo >= 0 && monthsAgo < 12) buckets[11 - monthsAgo] += d.count
+  }
+  return labels.map((label, i) => ({ label, value: buckets[i] }))
+}

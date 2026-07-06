@@ -3,10 +3,11 @@
 import { useSession } from 'next-auth/react'
 import { useRepositories } from '@/hooks/useRepositories'
 import { useProfileAnalysis, useAnalyzProfile } from '@/hooks/useAnalysis'
+import { useContributions } from '@/hooks/useContributions'
 import { PageShell, TopNav } from '@/components/gf/AppShell'
 import { Card, Button, Icon, Avatar, Chip, LangDot, Divider, AIBadge } from '@/components/gf/primitives'
 import { Heatmap, LangBars } from '@/components/gf/charts'
-import { deriveLanguages } from '@/lib/gf-derive'
+import { deriveLanguages, contributionsToGrid, contributionsTotal } from '@/lib/gf-derive'
 import { SITE_HOST } from '@/lib/site'
 import { toast } from '@/components/ui/Toast'
 import type { Repository } from '@/store'
@@ -48,6 +49,7 @@ export default function ProfilePage() {
   const { data: session } = useSession()
   const { repos } = useRepositories()
   const { data: analysis } = useProfileAnalysis()
+  const { data: contributions } = useContributions()
   const analyze = useAnalyzProfile()
   const user = session?.user
   const login = (user as { githubLogin?: string } | undefined)?.githubLogin
@@ -55,7 +57,8 @@ export default function ProfilePage() {
 
   const pinned = [...repos].sort((a: Repository, b: Repository) => (b.stargazersCount || 0) - (a.stargazersCount || 0)).slice(0, 6)
   const langs = deriveLanguages(repos, 6)
-  const heatmap = deriveHeatmap(repos)
+  const hasRealContribs = !!contributions?.length
+  const heatmap = hasRealContribs ? contributionsToGrid(contributions) : deriveHeatmap(repos)
   const totalStars = repos.reduce((s: number, r: Repository) => s + (r.stargazersCount || 0), 0)
 
   const aiBio = analysis?.profileBioSuggestion as string | undefined
@@ -139,7 +142,8 @@ export default function ProfilePage() {
           </div>
 
           <Card>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Contribution activity</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Contribution activity</div>
+            {hasRealContribs && <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>{contributionsTotal(contributions).toLocaleString()} contributions in the last year</div>}
             <Heatmap data={heatmap} cell={11} gap={3} showLegend={false} />
           </Card>
 

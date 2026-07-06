@@ -4,14 +4,17 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { Logo, Card, Button, Icon, Avatar, Chip, LangDot, Divider } from '@/components/gf/primitives'
 import { Heatmap, LangBars } from '@/components/gf/charts'
-import { deriveLanguages } from '@/lib/gf-derive'
+import { deriveLanguages, contributionsToGrid, contributionsTotal, type ContribDay } from '@/lib/gf-derive'
 import type { Repository as StoreRepository } from '@/store'
 import { ShareButton } from './ShareButton'
 
 async function getProfile(username: string) {
   const user = await prisma.user.findUnique({
     where: { githubLogin: username },
-    select: { name: true, bio: true, image: true, githubLogin: true },
+    select: {
+      name: true, bio: true, image: true, githubLogin: true,
+      followers: true, location: true, company: true, blog: true, twitterUsername: true, contributions: true,
+    },
   })
   if (!user) return null
   const repos = await prisma.repository.findMany({
@@ -52,7 +55,9 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const { user, repos } = data
   const name = user.name || username
   const langs = deriveLanguages(repos as unknown as StoreRepository[], 6)
-  const heatmap = deriveHeatmap(repos)
+  const contribDays = (user.contributions as ContribDay[] | null) || []
+  const hasRealContribs = contribDays.length > 0
+  const heatmap = hasRealContribs ? contributionsToGrid(contribDays) : deriveHeatmap(repos)
   const totalStars = repos.reduce((s, r) => s + (r.stargazersCount || 0), 0)
   const totalForks = repos.reduce((s, r) => s + (r.forksCount || 0), 0)
   const pinned = repos.slice(0, 6)
@@ -61,8 +66,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const stats = [
     { value: repos.length.toLocaleString(), label: 'Repositories' },
     { value: totalStars.toLocaleString(), label: 'Stars' },
-    { value: totalForks.toLocaleString(), label: 'Forks' },
+    ...(user.followers != null ? [{ value: user.followers.toLocaleString(), label: 'Followers' }] : [{ value: totalForks.toLocaleString(), label: 'Forks' }]),
     { value: String(langs.length), label: 'Languages' },
+  ]
+
+  const socials: { label: string; href: string }[] = [
+    { label: 'GitHub', href: `https://github.com/${user.githubLogin}` },
+    ...(user.blog ? [{ label: 'Website', href: user.blog.startsWith('http') ? user.blog : `https://${user.blog}` }] : []),
+    ...(user.twitterUsername ? [{ label: 'Twitter', href: `https://twitter.com/${user.twitterUsername}` }] : []),
   ]
 
   return (
@@ -81,9 +92,17 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <div style={{ flex: 1, minWidth: 240 }}>
               <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, margin: 0, color: 'var(--text)' }}>{name}</h1>
               <div className="mono" style={{ fontSize: 15, color: 'var(--text-2)', marginTop: 2 }}>@{user.githubLogin}</div>
+              {(user.location || user.company) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 10, fontSize: 13, color: 'var(--text-2)' }}>
+                  {user.location && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon.MapPin size={13} />{user.location}</span>}
+                  {user.company && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon.Building size={13} />{user.company}</span>}
+                </div>
+              )}
               <p style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.55, margin: '14px 0 0', maxWidth: 620 }}>{bio}</p>
-              <div style={{ marginTop: 16 }}>
-                <Button variant="surface" size="sm" icon={<Icon.Github size={14} />} href={`https://github.com/${user.githubLogin}`}>View on GitHub</Button>
+              <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {socials.map((s) => (
+                  <Button key={s.label} variant="surface" size="sm" icon={s.label === 'GitHub' ? <Icon.Github size={14} /> : s.label === 'Twitter' ? <Icon.Twitter size={14} /> : <Icon.Link size={14} />} href={s.href}>{s.label}</Button>
+                ))}
               </div>
             </div>
           </div>
@@ -102,7 +121,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
           {/* contributions */}
           <section>
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>Contribution activity</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Contribution activity</h2>
+            {hasRealContribs && <div style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 12px' }}>{contributionsTotal(contribDays).toLocaleString()} contributions in the last year</div>}
             <Card><Heatmap data={heatmap} cell={11} gap={3} /></Card>
           </section>
 

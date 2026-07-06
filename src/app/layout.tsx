@@ -30,6 +30,10 @@ export default function RootLayout({
                   if (theme === 'light' || theme === 'dark') {
                     document.documentElement.setAttribute('data-theme', theme);
                   }
+                  var accent = localStorage.getItem('accent');
+                  if (accent && /^#[0-9a-fA-F]{6}$/.test(accent)) {
+                    document.documentElement.style.setProperty('--accent', accent);
+                  }
                 } catch (e) {}
               })();
             `,

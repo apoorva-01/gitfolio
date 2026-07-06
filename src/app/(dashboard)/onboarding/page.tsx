@@ -60,14 +60,7 @@ function ScopeRow({ icon, title, body, required }: { icon: IconName; title: stri
   )
 }
 
-const THEMES = [
-  { name: 'Tessera', desc: 'Vercel-leaning · dark/light · code-first', preview: 'linear-gradient(135deg, #0a0a0b 0%, #141416 100%)' },
-  { name: 'Linear Pro', desc: 'Dense · saturated · sidebar nav', preview: 'linear-gradient(135deg, #16161a 0%, #5e5ce6 100%)' },
-  { name: 'Brutalist', desc: 'High-contrast · sans-serif · grid', preview: 'linear-gradient(135deg, #fafafa 0%, #e4e4e7 100%)' },
-  { name: 'Terminal', desc: 'Mono everything · CRT vibes', preview: 'radial-gradient(ellipse at center, #1a3d2e 0%, #050a08 100%)' },
-  { name: 'Editorial', desc: 'Serif · long-form · readable', preview: 'linear-gradient(135deg, #f5f1eb 0%, #d4c5b5 100%)' },
-  { name: 'Aurora', desc: 'Gradient-rich · marketing-feel', preview: 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)' },
-]
+const ACCENTS: [string, string][] = [['Emerald', '#10b981'], ['Violet', '#7c3aed'], ['Cyan', '#06b6d4'], ['Amber', '#f59e0b']]
 
 const inputStyle: React.CSSProperties = { width: '100%', height: 40, padding: '0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }
@@ -79,7 +72,8 @@ export default function OnboardingPage() {
   const { data: profile } = useUser()
   const updateUser = useUpdateUser()
   const [step, setStep] = useState(1)
-  const [theme, setTheme] = useState('Tessera')
+  const [mode, setMode] = useState<'dark' | 'light'>('dark')
+  const [accent, setAccent] = useState('#10b981')
   const [shipping, setShipping] = useState(false)
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
@@ -95,6 +89,24 @@ export default function OnboardingPage() {
       setSeeded(true)
     }
   }, [session, profile, user, seeded])
+
+  useEffect(() => {
+    const t = localStorage.getItem('theme')
+    if (t === 'light' || t === 'dark') setMode(t)
+    const a = localStorage.getItem('accent')
+    if (a && /^#[0-9a-fA-F]{6}$/.test(a)) setAccent(a.toLowerCase())
+  }, [])
+
+  const applyMode = (m: 'dark' | 'light') => {
+    setMode(m)
+    localStorage.setItem('theme', m)
+    document.documentElement.setAttribute('data-theme', m)
+  }
+  const applyAccent = (c: string) => {
+    setAccent(c)
+    localStorage.setItem('accent', c)
+    document.documentElement.style.setProperty('--accent', c)
+  }
 
   const saveStep2 = () => {
     const patch = { name: name.trim() || (user?.name || 'Developer'), bio: bio.trim() }
@@ -143,37 +155,54 @@ export default function OnboardingPage() {
         </div>
         <div>
           <label style={labelStyle}>Your URL</label>
-          <div style={{ display: 'flex', alignItems: 'center', height: 40, padding: '0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', height: 40, padding: '0 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8 }}>
             <span className="mono" style={{ fontSize: 13, color: 'var(--text-3)' }}>{SITE_HOST}/</span>
-            <input defaultValue={login} className="mono" style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+            <span className="mono" style={{ flex: 1, color: 'var(--text)', fontSize: 13 }}>{login}</span>
             <Icon.Check size={14} style={{ color: 'var(--success)' }} />
           </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>Set by your GitHub username.</div>
         </div>
       </div>
     </OnboardingShell>
   )
 
   if (step === 3) return (
-    <OnboardingShell step={3} title="Pick a starting point" subtitle="Every theme is open MDX — fork and edit, or stay close to the source."
-      footer={<>{back}<Button size="lg" iconRight={<Icon.ArrowR size={14} />} onClick={() => setStep(4)}>Continue with {theme}</Button></>}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        {THEMES.map((t) => {
-          const selected = t.name === theme
-          return (
-            <div key={t.name} onClick={() => setTheme(t.name)} style={{
-              border: `1.5px solid ${selected ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
-              background: 'var(--surface)', boxShadow: selected ? '0 0 0 4px var(--accent-soft)' : 'none', position: 'relative',
-            }}>
-              <div style={{ height: 120, background: t.preview, position: 'relative', borderBottom: '1px solid var(--border)' }}>
-                {selected && <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><Icon.Check size={12} /></div>}
-              </div>
-              <div style={{ padding: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{t.desc}</div>
-              </div>
-            </div>
-          )
-        })}
+    <OnboardingShell step={3} title="Make it yours" subtitle="Set the look of your GitFolio. Change it anytime in Settings."
+      footer={<>{back}<Button size="lg" iconRight={<Icon.ArrowR size={14} />} onClick={() => setStep(4)}>Continue</Button></>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div>
+          <label style={labelStyle}>Theme</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+            {([['dark', 'Dark', 'linear-gradient(135deg, #0a0a0b 0%, #1c1c1f 100%)'], ['light', 'Light', 'linear-gradient(135deg, #ffffff 0%, #e4e4e7 100%)']] as const).map(([key, label, preview]) => {
+              const selected = mode === key
+              return (
+                <div key={key} onClick={() => applyMode(key)} style={{
+                  border: `1.5px solid ${selected ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+                  background: 'var(--surface)', boxShadow: selected ? '0 0 0 4px var(--accent-soft)' : 'none', position: 'relative',
+                }}>
+                  <div style={{ height: 96, background: preview, position: 'relative', borderBottom: '1px solid var(--border)' }}>
+                    {selected && <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><Icon.Check size={12} /></div>}
+                  </div>
+                  <div style={{ padding: 12, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle}>Accent color</label>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {ACCENTS.map(([label, c]) => {
+              const selected = accent === c
+              return (
+                <button key={label} title={label} onClick={() => applyAccent(c)} style={{
+                  width: 40, height: 40, borderRadius: 12, background: c, border: '2px solid var(--bg)', cursor: 'pointer',
+                  boxShadow: selected ? `0 0 0 3px ${c}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                }}>{selected && <Icon.Check size={16} />}</button>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </OnboardingShell>
   )
@@ -196,7 +225,7 @@ export default function OnboardingPage() {
           <div><div style={{ fontSize: 18, fontWeight: 700 }}>{langCount}</div><div style={{ fontSize: 11, color: 'var(--text-3)' }}>Languages</div></div>
         </div>
         <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[`Theme: ${theme}`, 'AI bio drafted (edit anytime)', 'Top repos auto-pinned by stars', 'Contribution heatmap enabled'].map((line, i) => (
+          {[`${mode === 'dark' ? 'Dark' : 'Light'} theme · custom accent`, 'AI bio drafted (edit anytime)', 'Top repos auto-pinned by stars', 'Contribution heatmap enabled'].map((line, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon.Check size={12} style={{ color: 'var(--success)' }} /><span>{line}</span></div>
           ))}
         </div>

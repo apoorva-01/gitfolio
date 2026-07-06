@@ -345,11 +345,11 @@ function Step({ n, title, body, code }: { n: number; title: string; body: string
 
 const SECTION_X = 'clamp(20px, 5vw, 56px)'
 
-const FOOTER_COLUMNS: [string, string[]][] = [
-  ['Product', ['Features', 'Templates', 'Changelog', 'Roadmap']],
-  ['Developers', ['Docs', 'API', 'Embed', 'Status', 'OSS']],
-  ['Company', ['About', 'Blog', 'Careers', 'Press', 'Contact']],
-  ['Legal', ['Privacy', 'Terms', 'DPA', 'Security']],
+const GITHUB_URL = 'https://github.com/apoorva-01/gitfolio'
+
+const FOOTER_COLUMNS: [string, [string, string][]][] = [
+  ['Product', [['Features', '#features'], ['How it works', '#how'], ['Dashboard', '/dashboard']]],
+  ['Project', [['GitHub', GITHUB_URL], ['Sign in', '/auth/login'], ['Get started', '/onboarding']]],
 ]
 
 export default function LandingPage() {
@@ -372,11 +372,10 @@ export default function LandingPage() {
       >
         <Logo size={28} />
         <div className="gf-nav-links">
-          <a>Templates</a>
-          <a>Showcase</a>
-          <a>Changelog</a>
-          <a>Docs</a>
-          <a href="https://github.com/apoorva-01/gitfolio" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer">Docs</a>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Button href="/auth/login" variant="ghost" size="sm">Sign in</Button>
@@ -441,7 +440,7 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES */}
-      <section style={{ padding: `96px ${SECTION_X}` }}>
+      <section id="features" style={{ padding: `96px ${SECTION_X}`, scrollMarginTop: 72 }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 1.6, marginBottom: 12 }}>What you get</div>
           <h2 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 700, letterSpacing: -1.2, margin: 0, color: 'var(--text)' }}>Everything you build, told well.</h2>
@@ -458,7 +457,7 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section style={{ padding: `64px ${SECTION_X} 96px`, background: 'var(--bg-2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+      <section id="how" style={{ padding: `64px ${SECTION_X} 96px`, background: 'var(--bg-2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', scrollMarginTop: 72 }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 1.6, marginBottom: 12 }}>How it works</div>
           <h2 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 700, letterSpacing: -1.2, margin: 0, color: 'var(--text)' }}>Live in 30 seconds.</h2>
@@ -496,9 +495,12 @@ export default function LandingPage() {
             <div key={head}>
               <div style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{head}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {items.map((i) => (
-                  <a key={i} style={{ fontSize: 13, color: 'var(--text-2)' }}>{i}</a>
-                ))}
+                {items.map(([label, href]) => {
+                  const external = href.startsWith('http')
+                  return (
+                    <a key={label} href={href} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})} style={{ fontSize: 13, color: 'var(--text-2)', textDecoration: 'none' }}>{label}</a>
+                  )
+                })}
               </div>
             </div>
           ))}
@@ -506,9 +508,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 20, fontSize: 12, color: 'var(--text-3)', gap: 16, flexWrap: 'wrap' }}>
           <span>© 2026 GitFolio · Open source, free forever</span>
           <div style={{ display: 'flex', gap: 14 }}>
-            <a href="https://github.com/apoorva-01/gitfolio" target="_blank" rel="noreferrer" aria-label="GitHub"><Icon.Github size={16} /></a>
-            <Icon.Twitter size={16} />
-            <Icon.Globe size={16} />
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="GitHub" style={{ color: 'var(--text-3)' }}><Icon.Github size={16} /></a>
           </div>
         </div>
       </footer>

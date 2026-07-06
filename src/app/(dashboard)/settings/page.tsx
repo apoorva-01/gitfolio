@@ -21,17 +21,6 @@ function SettingsRow({ title, body, control, danger }: { title: string; body?: s
   )
 }
 
-function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
-  return (
-    <span onClick={onChange} style={{
-      display: 'inline-flex', width: 36, height: 20, borderRadius: 10, background: value ? 'var(--accent)' : 'var(--surface-2)',
-      border: '1px solid var(--border)', padding: 1, cursor: 'pointer', transition: 'background .15s',
-    }}>
-      <span style={{ width: 16, height: 16, borderRadius: 8, background: '#fff', transform: value ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .18s', boxShadow: '0 1px 2px rgba(0,0,0,.2)' }} />
-    </span>
-  )
-}
-
 function SettingsSection({ title, subtitle, id, children }: { title: string; subtitle?: string; id: string; children: ReactNode }) {
   return (
     <Card padding={24} style={{ marginBottom: 16 }}>
@@ -60,7 +49,9 @@ function Segmented<T extends string>({ options, value, onChange }: { options: { 
   )
 }
 
-const SECTIONS = [['profile', 'Profile'], ['appearance', 'Appearance'], ['connections', 'Connections'], ['privacy', 'Privacy'], ['danger', 'Danger']] as const
+const SECTIONS = [['profile', 'Profile'], ['appearance', 'Appearance'], ['connections', 'Connections'], ['danger', 'Danger']] as const
+
+const ACCENTS: [string, string][] = [['emerald', '#10b981'], ['violet', '#7c3aed'], ['cyan', '#06b6d4'], ['amber', '#f59e0b']]
 
 export default function SettingsPage() {
   const { data: session, update: updateSession } = useSession()
@@ -70,7 +61,7 @@ export default function SettingsPage() {
   const updateUser = useUpdateUser()
 
   const [theme, setTheme] = useState<Theme>('dark')
-  const [privacy, setPrivacy] = useState({ index: true, contrib: true, ai: true, email: false })
+  const [accent, setAccent] = useState('#10b981')
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
   const [seeded, setSeeded] = useState(false)
@@ -78,7 +69,15 @@ export default function SettingsPage() {
   useEffect(() => {
     const stored = localStorage.getItem('theme') as Theme | null
     if (stored === 'light' || stored === 'dark' || stored === 'system') setTheme(stored)
+    const a = localStorage.getItem('accent')
+    if (a && /^#[0-9a-fA-F]{6}$/.test(a)) setAccent(a.toLowerCase())
   }, [])
+
+  const applyAccent = (c: string) => {
+    setAccent(c)
+    localStorage.setItem('accent', c)
+    document.documentElement.style.setProperty('--accent', c)
+  }
 
   useEffect(() => {
     if (profile && !seeded) {
@@ -153,8 +152,8 @@ export default function SettingsPage() {
               ]} />} />
             <SettingsRow title="Accent color" body="Used across charts, buttons, and highlights."
               control={<div style={{ display: 'flex', gap: 8 }}>
-                {[['emerald', '#10b981'], ['violet', '#7c3aed'], ['cyan', '#06b6d4'], ['amber', '#f59e0b']].map(([n, c], i) => (
-                  <button key={n} title={n} style={{ width: 24, height: 24, borderRadius: 12, background: c, border: '2px solid var(--bg)', boxShadow: i === 0 ? `0 0 0 2px ${c}` : 'none', cursor: 'pointer' }} />
+                {ACCENTS.map(([n, c]) => (
+                  <button key={n} title={n} onClick={() => applyAccent(c)} style={{ width: 24, height: 24, borderRadius: 12, background: c, border: '2px solid var(--bg)', boxShadow: accent === c ? `0 0 0 2px ${c}` : 'none', cursor: 'pointer' }} />
                 ))}
               </div>} />
           </SettingsSection>
@@ -165,14 +164,6 @@ export default function SettingsPage() {
                 <Chip color="var(--success)" dot>Active</Chip>
                 <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/' })}>Disconnect</Button>
               </div>} />
-            <SettingsRow title="Custom domain" body="Bring your own domain with auto-SSL." control={<Button variant="surface" size="sm">Connect</Button>} />
-          </SettingsSection>
-
-          <SettingsSection id="privacy" title="Privacy">
-            <SettingsRow title="Index publicly" body="Allow search engines to index your GitFolio." control={<Toggle value={privacy.index} onChange={() => setPrivacy((p) => ({ ...p, index: !p.index }))} />} />
-            <SettingsRow title="Show contribution data" body="Heatmap, streaks, commit cadence." control={<Toggle value={privacy.contrib} onChange={() => setPrivacy((p) => ({ ...p, contrib: !p.contrib }))} />} />
-            <SettingsRow title="AI insights opt-in" body="Allow Claude to read public repos for portfolio bios and weekly insights." control={<Toggle value={privacy.ai} onChange={() => setPrivacy((p) => ({ ...p, ai: !p.ai }))} />} />
-            <SettingsRow title="Show email publicly" control={<Toggle value={privacy.email} onChange={() => setPrivacy((p) => ({ ...p, email: !p.email }))} />} />
           </SettingsSection>
 
           <SettingsSection id="danger" title="Danger zone" subtitle="Irreversible actions.">

@@ -1,229 +1,186 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useSession, signOut } from 'next-auth/react'
+import { PageShell, TopNav } from '@/components/gf/AppShell'
+import { Card, Button, Icon, Chip } from '@/components/gf/primitives'
+import { useUser, useUpdateUser } from '@/hooks/useUser'
 import { toast } from '@/components/ui/Toast'
-import { useUIStore } from '@/store'
-import { signOut } from 'next-auth/react'
+
+type Theme = 'light' | 'dark' | 'system'
+
+function SettingsRow({ title, body, control, danger }: { title: string; body?: string; control: ReactNode; danger?: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: '18px 0', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: danger ? 'var(--danger)' : 'var(--text)' }}>{title}</div>
+        {body && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4, lineHeight: 1.5 }}>{body}</div>}
+      </div>
+      <div style={{ flexShrink: 0 }}>{control}</div>
+    </div>
+  )
+}
+
+function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
+  return (
+    <span onClick={onChange} style={{
+      display: 'inline-flex', width: 36, height: 20, borderRadius: 10, background: value ? 'var(--accent)' : 'var(--surface-2)',
+      border: '1px solid var(--border)', padding: 1, cursor: 'pointer', transition: 'background .15s',
+    }}>
+      <span style={{ width: 16, height: 16, borderRadius: 8, background: '#fff', transform: value ? 'translateX(16px)' : 'translateX(0)', transition: 'transform .18s', boxShadow: '0 1px 2px rgba(0,0,0,.2)' }} />
+    </span>
+  )
+}
+
+function SettingsSection({ title, subtitle, id, children }: { title: string; subtitle?: string; id: string; children: ReactNode }) {
+  return (
+    <Card padding={24} style={{ marginBottom: 16 }}>
+      <div id={id} style={{ marginBottom: 8, scrollMarginTop: 72 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', letterSpacing: -0.2 }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>{subtitle}</div>}
+      </div>
+      {children}
+    </Card>
+  )
+}
+
+function Segmented<T extends string>({ options, value, onChange }: { options: { key: T; label: ReactNode }[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--surface-2)', borderRadius: 8 }}>
+      {options.map((o) => {
+        const active = o.key === value
+        return (
+          <button key={o.key} onClick={() => onChange(o.key)} style={{
+            padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
+            background: active ? 'var(--surface)' : 'transparent', color: active ? 'var(--text)' : 'var(--text-3)', boxShadow: active ? 'var(--shadow-sm)' : 'none',
+          }}>{o.label}</button>
+        )
+      })}
+    </div>
+  )
+}
+
+const SECTIONS = [['profile', 'Profile'], ['appearance', 'Appearance'], ['connections', 'Connections'], ['privacy', 'Privacy'], ['danger', 'Danger']] as const
 
 export default function SettingsPage() {
-  const [activeSection, setActiveSection] = useState('account')
-  const [localRepoUpdates, setLocalRepoUpdates] = useState(false)
-  const notifications = useUIStore((s) => s.notifications)
-  const setNotification = useUIStore((s) => s.setNotification)
-  const [theme, setTheme] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('theme') || 'dark' : 'dark')
+  const { data: session, update: updateSession } = useSession()
+  const user = session?.user
+  const login = (user as { githubLogin?: string } | undefined)?.githubLogin
+  const { data: profile } = useUser()
+  const updateUser = useUpdateUser()
+
+  const [theme, setTheme] = useState<Theme>('dark')
+  const [privacy, setPrivacy] = useState({ index: true, contrib: true, ai: true, email: false })
+  const [name, setName] = useState('')
+  const [bio, setBio] = useState('')
+  const [seeded, setSeeded] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('theme') as Theme | null
+    if (stored === 'light' || stored === 'dark' || stored === 'system') setTheme(stored)
+  }, [])
+
+  useEffect(() => {
+    if (profile && !seeded) {
+      setName(profile.name || '')
+      setBio(profile.bio || '')
+      setSeeded(true)
+    }
+  }, [profile, seeded])
+
+  const saveProfile = () => {
+    if (updateUser.isPending) return
+    updateUser.mutate({ name, bio }, {
+      onSuccess: () => { toast.success('Profile saved'); updateSession() },
+      onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not save'),
+    })
+  }
+
+  const applyTheme = (t: Theme) => {
+    setTheme(t)
+    localStorage.setItem('theme', t)
+    const resolved = t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t
+    document.documentElement.setAttribute('data-theme', resolved)
+  }
+
+  const clearData = () => {
+    if (!confirm('Delete all synced repositories and analyses? This cannot be undone.')) return
+    fetch('/api/settings/clear-data', { method: 'POST' })
+      .then((r) => { if (!r.ok) throw new Error(); toast.success('All data cleared') })
+      .catch(() => toast.error('Could not clear data'))
+  }
+
+  const inputStyle: React.CSSProperties = { width: '100%', height: 36, padding: '0 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }
 
   return (
-    <div>
-      <h1 className="text-[28px] font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Account Settings</h1>
-      <p className="text-sm mb-8" style={{ color: 'var(--color-text-secondary)' }}>Manage your account preferences and settings</p>
+    <PageShell topNav={<TopNav title="Settings" search={false} />}>
+      <div className="gf-settings-grid" style={{ padding: 24, display: 'grid', gridTemplateColumns: '180px 1fr', gap: 32 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: 80, alignSelf: 'start' }}>
+          {SECTIONS.map(([id, label]) => (
+            <a key={id} href={`#${id}`} style={{ padding: '8px 12px 8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: 'var(--text-2)', borderLeft: '2px solid transparent', textDecoration: 'none' }}>{label}</a>
+          ))}
+        </div>
 
-      <div className="flex mb-4 gap-2">
-        {[
-          { id: 'profile', label: 'Profile' },
-          { id: 'account', label: 'Account' },
-          { id: 'appearance', label: 'Appearance' },
-          { id: 'notifications', label: 'Notifications' },
-          { id: 'security', label: 'Security' },
-        ].map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setActiveSection(s.id)}
-            className="px-4 py-2 text-sm rounded cursor-pointer transition-all"
-            style={{
-              background: activeSection === s.id ? 'rgba(88, 166, 255, 0.1)' : 'transparent',
-              color: activeSection === s.id ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              border: 'none',
-            }}
-          >
-            {s.label}
-          </button>
-        ))}
+        <div>
+          <SettingsSection id="profile" title="Profile" subtitle="The basics shown on your public GitFolio.">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, paddingTop: 16 }}>
+              <div>
+                <label style={labelStyle}>Display name</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Username</label>
+                <input defaultValue={login || ''} className="mono" readOnly style={{ ...inputStyle, fontFamily: 'var(--font-mono)', color: 'var(--text-2)' }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Bio</label>
+                <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={2} placeholder="Tell visitors what you build…" style={{ ...inputStyle, height: 'auto', padding: 10, resize: 'none', lineHeight: 1.5 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, textAlign: 'right' }}>{bio.length}/280</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <Button variant="primary" size="md" disabled={updateUser.isPending} onClick={saveProfile}>{updateUser.isPending ? 'Saving…' : 'Save changes'}</Button>
+            </div>
+          </SettingsSection>
+
+          <SettingsSection id="appearance" title="Appearance" subtitle="How GitFolio looks for you.">
+            <SettingsRow title="Theme" body="Auto follows your OS · dark is the default"
+              control={<Segmented<Theme> value={theme} onChange={applyTheme} options={[
+                { key: 'light', label: <><Icon.Sun size={12} />Light</> },
+                { key: 'dark', label: <><Icon.Moon size={12} />Dark</> },
+                { key: 'system', label: 'System' },
+              ]} />} />
+            <SettingsRow title="Accent color" body="Used across charts, buttons, and highlights."
+              control={<div style={{ display: 'flex', gap: 8 }}>
+                {[['emerald', '#10b981'], ['violet', '#7c3aed'], ['cyan', '#06b6d4'], ['amber', '#f59e0b']].map(([n, c], i) => (
+                  <button key={n} title={n} style={{ width: 24, height: 24, borderRadius: 12, background: c, border: '2px solid var(--bg)', boxShadow: i === 0 ? `0 0 0 2px ${c}` : 'none', cursor: 'pointer' }} />
+                ))}
+              </div>} />
+          </SettingsSection>
+
+          <SettingsSection id="connections" title="Connections" subtitle="Linked accounts.">
+            <SettingsRow title="GitHub" body={login ? `Connected as @${login}` : 'Not connected'}
+              control={<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Chip color="var(--success)" dot>Active</Chip>
+                <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/' })}>Disconnect</Button>
+              </div>} />
+            <SettingsRow title="Custom domain" body="Bring your own domain with auto-SSL." control={<Button variant="surface" size="sm">Connect</Button>} />
+          </SettingsSection>
+
+          <SettingsSection id="privacy" title="Privacy">
+            <SettingsRow title="Index publicly" body="Allow search engines to index your GitFolio." control={<Toggle value={privacy.index} onChange={() => setPrivacy((p) => ({ ...p, index: !p.index }))} />} />
+            <SettingsRow title="Show contribution data" body="Heatmap, streaks, commit cadence." control={<Toggle value={privacy.contrib} onChange={() => setPrivacy((p) => ({ ...p, contrib: !p.contrib }))} />} />
+            <SettingsRow title="AI insights opt-in" body="Allow Claude to read public repos for portfolio bios and weekly insights." control={<Toggle value={privacy.ai} onChange={() => setPrivacy((p) => ({ ...p, ai: !p.ai }))} />} />
+            <SettingsRow title="Show email publicly" control={<Toggle value={privacy.email} onChange={() => setPrivacy((p) => ({ ...p, email: !p.email }))} />} />
+          </SettingsSection>
+
+          <SettingsSection id="danger" title="Danger zone" subtitle="Irreversible actions.">
+            <SettingsRow danger title="Clear all data" body="Delete every synced repository and AI analysis from GitFolio." control={<Button variant="danger" size="sm" onClick={clearData}>Clear data</Button>} />
+            <SettingsRow danger title="Sign out" body="End your session on this device." control={<Button variant="danger" size="sm" onClick={() => signOut({ callbackUrl: '/' })}>Sign out</Button>} />
+          </SettingsSection>
+        </div>
       </div>
-
-      {activeSection === 'profile' && (
-        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Profile Information</h2>
-          </div>
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-[200px_1fr] gap-6">
-              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Avatar</label>
-              <div className="flex gap-6 items-start">
-                <div className="relative group">
-                  <div
-                    className="w-24 h-24 rounded-full"
-                    style={{ background: 'linear-gradient(135deg, var(--color-accent), var(--color-success))', border: '3px solid var(--color-border)' }}
-                  />
-                  <div
-                    className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                    style={{ background: 'rgba(0,0,0,0.5)' }}
-                  >
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex gap-2.5 mt-1">
-                    <button className="px-4 py-2 text-sm rounded cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Upload new</button>
-                    <button className="px-4 py-2 text-sm rounded cursor-pointer" style={{ background: '#da3633', color: 'white', border: 'none' }}>Remove</button>
-                  </div>
-                  <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>JPG, PNG or GIF. Max 2MB.</p>
-                </div>
-              </div>
-            </div>
-            {[
-              { label: 'Full Name', value: 'Alex Developer', hint: '' },
-              { label: 'Username', value: 'alexdev', hint: 'Your unique identifier: gitfolio.dev/alexdev' },
-              { label: 'Location', value: 'San Francisco, CA', hint: '' },
-              { label: 'Website', value: '', hint: '', placeholder: 'https://your-site.com' },
-            ].map((f) => (
-              <div key={f.label} className="grid grid-cols-[200px_1fr] gap-6">
-                <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>{f.label}</label>
-                <div>
-                  <input
-                    type="text"
-                    className="w-full px-3.5 py-2.5 text-sm rounded"
-                    defaultValue={f.value}
-                    placeholder={f.placeholder}
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                  />
-                  {f.hint && <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>{f.hint}</p>}
-                </div>
-              </div>
-            ))}
-            <div className="grid grid-cols-[200px_1fr] gap-6">
-              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Bio</label>
-              <textarea
-                className="w-full px-3.5 py-2.5 text-sm rounded resize-y"
-                rows={3}
-                defaultValue="Full-stack developer passionate about building developer tools and open source."
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', minHeight: '100px' }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeSection === 'account' && (
-        <>
-          <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-            <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Email Preferences</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              {[
-                { id: 'analysisNotifications', label: 'Weekly digest', desc: 'Receive a weekly summary of your activity' },
-                { id: 'criticalIssueAlerts', label: 'New followers', desc: 'Get notified when someone follows you' },
-                { id: 'repoUpdates', label: 'Repository updates', desc: 'Notifications about your repositories' },
-              ].map((t) => {
-                const isStoreToggle = t.id !== 'repoUpdates'
-                const checked = isStoreToggle ? notifications[t.id as keyof typeof notifications] : localRepoUpdates
-                return (
-                  <div key={t.id} className="flex justify-between items-center py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t.label}</div>
-                      <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t.desc}</div>
-                    </div>
-                    <label className="relative inline-block w-11 h-6">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        className="opacity-0 w-0 h-0"
-                        onChange={(e) => {
-                          if (isStoreToggle) {
-                            setNotification(t.id as 'analysisNotifications' | 'criticalIssueAlerts', e.target.checked)
-                          } else {
-                            setLocalRepoUpdates(e.target.checked)
-                          }
-                        }}
-                      />
-                      <span
-                        className="absolute cursor-pointer inset-0 rounded-full transition-colors"
-                        style={{ background: checked ? 'var(--color-success)' : 'var(--color-surface-hover)' }}
-                      >
-                        <span
-                          className="absolute w-[18px] h-[18px] bg-white rounded-full transition-transform"
-                          style={{ left: '3px', bottom: '3px', transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
-                        />
-                      </span>
-                    </label>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-            <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Connected Accounts</h2>
-            </div>
-            <div className="p-6">
-              <div className="flex justify-between items-center py-4">
-                <div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>GitHub</div>
-                  <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Connected as @alexdev</div>
-                </div>
-                <button onClick={() => signOut({ callbackUrl: '/' })} className="px-4 py-2 text-sm rounded cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Disconnect</button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {activeSection === 'appearance' && (
-        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Appearance</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-[200px_1fr] gap-6">
-              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Theme</label>
-              <select
-                className="w-full max-w-xs px-3.5 py-2.5 text-sm rounded"
-                value={theme}
-                onChange={(e) => {
-                  setTheme(e.target.value)
-                  localStorage.setItem('theme', e.target.value)
-                  document.documentElement.setAttribute('data-theme', e.target.value)
-                }}
-                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-              >
-                <option value="dark">Dark (Default)</option>
-                <option value="light">Light</option>
-                <option value="system">System</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeSection === 'notifications' && (
-        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Notification Settings</h2>
-          </div>
-          <div className="p-6">
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Configure how you receive notifications about your repositories and activity.</p>
-          </div>
-        </div>
-      )}
-
-      {activeSection === 'security' && (
-        <div className="rounded-lg mb-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Security Settings</h2>
-          </div>
-          <div className="p-6">
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Manage your security preferences and connected sessions.</p>
-          </div>
-        </div>
-      )}
-
-      <div className="flex gap-3 mt-8 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <button onClick={() => toast.success('Settings saved successfully!')} className="px-5 py-2.5 rounded text-sm font-medium cursor-pointer" style={{ background: '#238636', color: 'white', border: 'none' }}>Save Changes</button>
-        <button onClick={() => toast.info('Changes discarded')} className="px-5 py-2.5 rounded text-sm font-medium cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Cancel</button>
-      </div>
-    </div>
+    </PageShell>
   )
 }

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
+import { useQuery } from '@tanstack/react-query'
 import { useRepositories } from '@/hooks/useRepositories'
 import { PageShell, TopNav } from '@/components/gf/AppShell'
 import { Card, Button, Icon, Chip, LangDot } from '@/components/gf/primitives'
@@ -10,11 +11,16 @@ import { deriveLanguages } from '@/lib/gf-derive'
 import { toast } from '@/components/ui/Toast'
 import type { Repository } from '@/store'
 
-function KPI({ label, value }: { label: string; value: string }) {
+function KPI({ label, value, delta }: { label: string; value: string; delta?: number | null }) {
   return (
     <Card padding={16}>
       <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, color: 'var(--text)', lineHeight: 1.1, marginTop: 6 }}>{value}</div>
+      {delta != null && (
+        <div style={{ fontSize: 11, marginTop: 4, color: delta > 0 ? 'var(--success)' : delta < 0 ? 'var(--danger)' : 'var(--text-3)' }}>
+          {delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '±0'} since last sync
+        </div>
+      )}
     </Card>
   )
 }
@@ -31,9 +37,24 @@ function CardHead({ title, sub, right }: { title: string; sub?: string; right?: 
   )
 }
 
+type Analytics = {
+  totalStars: number; totalForks: number; avgHealth: number
+  followers: number | null; contributionsTotal: number; hasContributions: boolean
+  weekdayActivity: number[]; monthlyActivity: { label: string; value: number }[]
+  deltas: { repos: number; stars: number; forks: number; followers: number } | null
+}
+
 export default function AnalyticsPage() {
   const { repos, total, isLoading, error } = useRepositories()
   const { data: session } = useSession()
+  const { data: analytics } = useQuery<Analytics>({
+    queryKey: ['analytics'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics')
+      if (!res.ok) throw new Error('Failed to load analytics')
+      return res.json()
+    },
+  })
   const username = (session?.user?.name || 'you').split(' ')[0]
 
   const topNav = (
@@ -53,20 +74,24 @@ export default function AnalyticsPage() {
   const totalForks = repos.reduce((s: number, r: Repository) => s + (r.forksCount || 0), 0)
   const avgHealth = repos.length ? Math.round(repos.reduce((s: number, r: Repository) => s + (r.healthScore || 0), 0) / repos.length) : 0
   const langs = deriveLanguages(repos, 5)
+  const deltas = analytics?.deltas ?? null
+  const realActivity = !!analytics?.hasContributions
 
-  // repos updated per month, last 12 months
-  const perMonth = Array(12).fill(0)
+  // contributions per month (real) — fall back to repo push activity until first sync
+  const perMonthFallback = Array(12).fill(0)
   repos.forEach((r: Repository) => {
     if (!r.pushedAt) return
     const m = Math.floor((Date.now() - new Date(r.pushedAt).getTime()) / 2629800000)
-    if (m >= 0 && m < 12) perMonth[11 - m]++
+    if (m >= 0 && m < 12) perMonthFallback[11 - m]++
   })
-  const monthLabels = Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - (11 - i)); return d.toLocaleString('en', { month: 'short' }) })
+  const fallbackLabels = Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - (11 - i)); return d.toLocaleString('en', { month: 'short' }) })
+  const monthlyValues = realActivity ? analytics!.monthlyActivity.map((m) => m.value) : perMonthFallback
+  const monthlyLabels = realActivity ? analytics!.monthlyActivity.map((m) => m.label) : fallbackLabels
 
   // stack graph: me + top languages
   const network: NetworkData = {
     nodes: [
-      { id: 'me', name: username, x: 0.5, y: 0.5, repos: 22, accent: true },
+      { id: 'me', name: username, x: 0.5, y: 0.5, repos: total, accent: true },
       ...langs.map((l, i) => {
         const a = (i / Math.max(1, langs.length)) * Math.PI * 2
         return { id: l.name, name: l.name, x: 0.5 + 0.34 * Math.cos(a), y: 0.5 + 0.34 * Math.sin(a), repos: Math.round(l.pct / 5) + 4 }
@@ -75,31 +100,28 @@ export default function AnalyticsPage() {
     edges: langs.map((l) => ['me', l.name, 5] as [string, string, number]),
   }
 
-  // peak activity by day/hour from push times
-  const grid = Array.from({ length: 7 }, () => Array(12).fill(0))
-  repos.forEach((r: Repository) => {
-    if (!r.pushedAt) return
-    const d = new Date(r.pushedAt)
-    const day = (d.getDay() + 6) % 7
-    grid[day][Math.floor(d.getHours() / 2)]++
-  })
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  // activity by weekday (real contributions) — fall back to repo push weekday
+  const weekdayFallback = Array(7).fill(0)
+  repos.forEach((r: Repository) => { if (r.pushedAt) weekdayFallback[new Date(r.pushedAt).getDay()]++ })
+  const weekday = realActivity ? analytics!.weekdayActivity : weekdayFallback
+  const weekdayMax = Math.max(1, ...weekday)
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   return (
     <PageShell topNav={topNav}>
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className="gf-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <KPI label="Repositories" value={String(total)} />
-          <KPI label="Total stars" value={totalStars.toLocaleString()} />
-          <KPI label="Total forks" value={String(totalForks)} />
+          <KPI label="Repositories" value={String(total)} delta={deltas?.repos} />
+          <KPI label="Total stars" value={totalStars.toLocaleString()} delta={deltas?.stars} />
+          <KPI label={analytics?.followers != null ? 'Followers' : 'Total forks'} value={analytics?.followers != null ? analytics.followers.toLocaleString() : String(totalForks)} delta={analytics?.followers != null ? deltas?.followers : deltas?.forks} />
           <KPI label="Avg health" value={`${avgHealth}%`} />
         </div>
 
         <div className="gf-dash-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <Card>
-              <CardHead title="Repository activity" sub="Repos updated per month" right={<Chip color="var(--accent)" dot>last 12 months</Chip>} />
-              <Bars data={perMonth} height={140} labels={monthLabels} />
+              <CardHead title={realActivity ? 'Contributions per month' : 'Repository activity'} sub={realActivity ? `${analytics!.contributionsTotal.toLocaleString()} in the last year` : 'Repos updated per month · sync for real contributions'} right={<Chip color="var(--accent)" dot>last 12 months</Chip>} />
+              <Bars data={monthlyValues} height={140} labels={monthlyLabels} />
             </Card>
             <Card style={{ display: 'flex', flexDirection: 'column' }}>
               <CardHead title="Your stack graph" sub={`${langs.length} core languages`} />
@@ -138,21 +160,17 @@ export default function AnalyticsPage() {
             </Card>
 
             <Card>
-              <CardHead title="Peak activity hours" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {grid.map((row, ri) => (
-                  <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', width: 22, textTransform: 'uppercase', letterSpacing: 0.6 }}>{days[ri]}</span>
-                    {row.map((v, i) => (
-                      <div key={i} style={{ flex: 1, height: 14, borderRadius: 2, background: v === 0 ? 'var(--surface-2)' : `color-mix(in oklab, var(--accent) ${Math.min(100, 20 + v * 14)}%, var(--surface-2))` }} />
-                    ))}
+              <CardHead title="Activity by weekday" sub={realActivity ? 'From your contribution calendar' : 'From repo push times · sync for real data'} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {weekday.map((v, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)', width: 30, textTransform: 'uppercase', letterSpacing: 0.6 }}>{days[i]}</span>
+                    <div style={{ flex: 1, height: 12, borderRadius: 3, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.round((v / weekdayMax) * 100)}%`, height: '100%', background: 'var(--accent)', borderRadius: 3 }} />
+                    </div>
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-2)', width: 34, textAlign: 'right' }}>{v.toLocaleString()}</span>
                   </div>
                 ))}
-                <div style={{ display: 'flex', gap: 6, marginLeft: 28, marginTop: 6 }}>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <span key={i} style={{ flex: 1, fontSize: 9, color: 'var(--text-3)', textAlign: 'center' }}>{i < 6 ? '0' + 2 * i : 2 * i}</span>
-                  ))}
-                </div>
               </div>
             </Card>
           </div>

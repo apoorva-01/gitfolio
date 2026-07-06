@@ -40,7 +40,7 @@ export function useRepoAnalysis(repoId: string) {
 
 export function useAnalyzeRepo() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (repoId: string) => {
       const res = await fetch('/api/ai/analyze-repo', {
@@ -54,6 +54,20 @@ export function useAnalyzeRepo() {
     onSuccess: (_, repoId) => {
       queryClient.invalidateQueries({ queryKey: ['repo-analysis', repoId] })
       queryClient.invalidateQueries({ queryKey: ['repo', repoId] })
+    },
+  })
+}
+
+export function useGenerateReadme() {
+  return useMutation({
+    mutationFn: async (repoId: string): Promise<{ readme: string }> => {
+      const res = await fetch('/api/ai/generate-readme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoId }),
+      })
+      if (!res.ok) throw new Error('README generation failed')
+      return res.json()
     },
   })
 }

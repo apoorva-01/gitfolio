@@ -12,15 +12,6 @@ export async function POST() {
 
   const userId = (session.user as { id: string }).id
 
-  const existing = await prisma.profileAnalysis.findFirst({
-    where: { userId },
-    orderBy: { analyzedAt: 'desc' },
-  })
-
-  if (existing && Date.now() - existing.analyzedAt.getTime() > 24 * 60 * 60 * 1000) {
-    return NextResponse.json({ cached: true, analysis: existing })
-  }
-
   try {
     const result = await analyzeProfile(userId)
     const analysis = await prisma.profileAnalysis.create({

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-GitFolio — a Next.js app that signs a developer in with GitHub, syncs all their repos into Postgres, scores each repo's "health", builds a force-graph of the repos, and runs Claude to produce repo/profile improvement analyses and README drafts. The `Design/` folder holds the static HTML/CSS design spec (GitHub-dark palette, IBM Plex Sans + JetBrains Mono) that the React UI is built to match — treat `Design/DESIGN.md` as the source of truth for visual work.
+GitFolio — a Next.js app that signs a developer in with GitHub, syncs all their repos into Postgres, scores each repo's "health", builds a force-graph of the repos, and runs Claude to produce repo/profile improvement analyses and README drafts. The design system (near-black + emerald palette, Inter + JetBrains Mono) lives in `src/components/gf` — reuse those primitives, charts, and tokens for visual work.
 
 ## Commands
 

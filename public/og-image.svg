@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.03">
+    <line x1="0" y1="0" x2="0" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="60" y1="0" x2="60" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="120" y1="0" x2="120" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="180" y1="0" x2="180" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="240" y1="0" x2="240" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="300" y1="0" x2="300" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="360" y1="0" x2="360" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="420" y1="0" x2="420" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="480" y1="0" x2="480" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="540" y1="0" x2="540" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="600" y1="0" x2="600" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="660" y1="0" x2="660" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="720" y1="0" x2="720" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="780" y1="0" x2="780" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="840" y1="0" x2="840" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="900" y1="0" x2="900" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="960" y1="0" x2="960" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="1020" y1="0" x2="1020" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="1080" y1="0" x2="1080" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="1140" y1="0" x2="1140" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="1200" y1="0" x2="1200" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="63" x2="1200" y2="63" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="126" x2="1200" y2="126" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="189" x2="1200" y2="189" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="252" x2="1200" y2="252" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="315" x2="1200" y2="315" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="378" x2="1200" y2="378" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="441" x2="1200" y2="441" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="504" x2="1200" y2="504" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="567" x2="1200" y2="567" stroke="#fff" stroke-width="1"/>
+  </g>
+
+  <!-- GitHub icon (decorative, top left) -->
+  <g transform="translate(80, 80)" opacity="0.15">
+    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" fill="#fff"/>
+  </g>
+
+  <!-- Logo mark (hexagon) -->
+  <g transform="translate(100, 240)">
+    <path d="M40 0 L80 23 L80 69 L40 92 L0 69 L0 23 Z" fill="url(#accent)" opacity="0.9"/>
+    <path d="M40 20 L60 32 L60 62 L40 74 L20 62 L20 32 Z" fill="#0f172a"/>
+    <circle cx="40" cy="47" r="8" fill="url(#accent)"/>
+    <line x1="40" y1="47" x2="40" y2="20" stroke="url(#accent)" stroke-width="3"/>
+    <line x1="40" y1="47" x2="60" y2="32" stroke="url(#accent)" stroke-width="3"/>
+    <line x1="40" y1="47" x2="60" y2="62" stroke="url(#accent)" stroke-width="3"/>
+    <line x1="40" y1="47" x2="40" y2="74" stroke="url(#accent)" stroke-width="3"/>
+    <line x1="40" y1="47" x2="20" y2="62" stroke="url(#accent)" stroke-width="3"/>
+    <line x1="40" y1="47" x2="20" y2="32" stroke="url(#accent)" stroke-width="3"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="220" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#f1f5f9" letter-spacing="-0.03em">GitFolio</text>
+
+  <!-- Tagline -->
+  <text x="220" y="350" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#94a3b8">Your GitHub story, beautifully told</text>
+
+  <!-- Divider -->
+  <rect x="220" y="385" width="200" height="2" rx="1" fill="url(#accent)"/>
+
+  <!-- Feature pills -->
+  <g transform="translate(220, 420)">
+    <rect x="0" y="0" width="140" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="70" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#94a3b8">✨ AI Insights</text>
+
+    <rect x="160" y="0" width="160" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="240" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#94a3b8">📊 Analytics</text>
+
+    <rect x="340" y="0" width="140" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="410" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#94a3b8">🎨 Themes</text>
+  </g>
+
+  <!-- GitHub contribution mini visualization (bottom right) -->
+  <g transform="translate(880, 400)">
+    <text x="0" y="0" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#64748b" letter-spacing="0.05em" text-transform="uppercase">ACTIVITY</text>
+    <g transform="translate(0, 20)">
+      <!-- Contribution cells (mini heatmap) -->
+      <g fill="#1e293b">
+        <rect x="0" y="0" width="12" height="12" rx="2"/>
+        <rect x="16" y="0" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="32" y="0" width="12" height="12" rx="2"/>
+        <rect x="48" y="0" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="64" y="0" width="12" height="12" rx="2"/>
+        <rect x="80" y="0" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="96" y="0" width="12" height="12" rx="2"/>
+        <rect x="112" y="0" width="12" height="12" rx="2"/>
+        <rect x="128" y="0" width="12" height="12" rx="2" fill="#6366f1"/>
+        <rect x="144" y="0" width="12" height="12" rx="2" fill="#4f46e5"/>
+
+        <rect x="0" y="16" width="12" height="12" rx="2"/>
+        <rect x="16" y="16" width="12" height="12" rx="2"/>
+        <rect x="32" y="16" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="48" y="16" width="12" height="12" rx="2"/>
+        <rect x="64" y="16" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="80" y="16" width="12" height="12" rx="2" fill="#6366f1"/>
+        <rect x="96" y="16" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="112" y="16" width="12" height="12" rx="2"/>
+        <rect x="128" y="16" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="144" y="16" width="12" height="12" rx="2"/>
+
+        <rect x="0" y="32" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="16" y="32" width="12" height="12" rx="2" fill="#6366f1"/>
+        <rect x="32" y="32" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="48" y="32" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="64" y="32" width="12" height="12" rx="2"/>
+        <rect x="80" y="32" width="12" height="12" rx="2"/>
+        <rect x="96" y="32" width="12" height="12" rx="2" fill="#6366f1"/>
+        <rect x="112" y="32" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="128" y="32" width="12" height="12" rx="2"/>
+        <rect x="144" y="32" width="12" height="12" rx="2" fill="#4f46e5"/>
+
+        <rect x="0" y="48" width="12" height="12" rx="2"/>
+        <rect x="16" y="48" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="32" y="48" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="48" y="48" width="12" height="12" rx="2" fill="#6366f1"/>
+        <rect x="64" y="48" width="12" height="12" rx="2" fill="#4f46e5"/>
+        <rect x="80" y="48" width="12" height="12" rx="2"/>
+        <rect x="96" y="48" width="12" height="12" rx="2"/>
+        <rect x="112" y="48" width="12" height="12" rx="2" fill="#312e81"/>
+        <rect x="128" y="48" width="12" height="12" rx="2" fill="#6366f1"/>
+        <rect x="144" y="48" width="12" height="12" rx="2" fill="#4f46e5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- Decorative corner accent -->
+  <circle cx="1150" cy="50" r="200" fill="url(#accent)" opacity="0.04"/>
+</svg>

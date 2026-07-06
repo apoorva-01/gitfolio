@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRepositories, useSyncRepos } from '@/hooks/useRepositories'
 import { useProfileAnalysis, useAnalyzProfile } from '@/hooks/useAnalysis'
+import { useContributions } from '@/hooks/useContributions'
 import { PageShell, TopNav } from '@/components/gf/AppShell'
 import { Card, Button, Icon, Avatar, Chip, AIBadge, type IconName } from '@/components/gf/primitives'
 import { Heatmap, LangBars, ActivityTimeline, type ActivityItem, type LangSlice } from '@/components/gf/charts'
 import { toast } from '@/components/ui/Toast'
-import { rel, deriveLanguages } from '@/lib/gf-derive'
+import { rel, deriveLanguages, contributionsToGrid, contributionsTotal } from '@/lib/gf-derive'
 import { SITE_URL, SITE_HOST } from '@/lib/site'
 import type { Repository } from '@/store'
 
@@ -133,6 +134,7 @@ export default function DashboardPage() {
   const { repos, total, isLoading, error } = useRepositories()
   const { data: session } = useSession()
   const { data: analysis } = useProfileAnalysis()
+  const { data: contributions } = useContributions()
   const analyze = useAnalyzProfile()
   const sync = useSyncRepos()
   const user = session?.user
@@ -182,7 +184,9 @@ export default function DashboardPage() {
 
   const languages = deriveLanguages(repos)
   const activity = deriveActivity(repos)
-  const heatmap = deriveHeatmap(repos)
+  const hasRealContribs = !!contributions?.length
+  const heatmap = hasRealContribs ? contributionsToGrid(contributions) : deriveHeatmap(repos)
+  const contribTotal = hasRealContribs ? contributionsTotal(contributions) : 0
   const aiImprovements = (analysis?.topImprovements as Improvement[] | undefined) || []
   const insights = aiImprovements.length ? improvementsToInsights(aiImprovements) : deriveInsights(repos, languages)
 
@@ -235,7 +239,7 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Contribution activity</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Last 12 months · derived from repo activity</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{hasRealContribs ? `${contribTotal.toLocaleString()} contributions in the last year` : 'Last 12 months · sync for your real contribution graph'}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <Chip color="var(--accent)" dot>{new Date().getFullYear()}</Chip>

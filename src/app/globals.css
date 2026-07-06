@@ -24,9 +24,10 @@
   --shadow-lg: 0 24px 64px -12px rgba(0, 0, 0, .6);
 
   --accent: #10b981;
-  --accent-2: #34d399;
-  --accent-soft: rgba(16, 185, 129, .14);
-  --accent-dim: rgba(16, 185, 129, .5);
+  /* derived from --accent so a custom accent (set on <html>) retints the whole app */
+  --accent-2: color-mix(in oklab, var(--accent), white 22%);
+  --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent);
+  --accent-dim: color-mix(in oklab, var(--accent) 50%, transparent);
 
   --ai: #a78bfa;
   --ai-2: #c4b5fd;

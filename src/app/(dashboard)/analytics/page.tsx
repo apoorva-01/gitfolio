@@ -1,298 +1,163 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRepositories } from '@/hooks/useRepositories'
+import { PageShell, TopNav } from '@/components/gf/AppShell'
+import { Card, Button, Icon, Chip, LangDot } from '@/components/gf/primitives'
+import { Bars, Donut, Network, type NetworkData } from '@/components/gf/charts'
+import { deriveLanguages } from '@/lib/gf-derive'
+import { toast } from '@/components/ui/Toast'
+import type { Repository } from '@/store'
 
-const chartData: Record<string, { commits: string; added: string; removed: string; change: string; bars: string[]; sparkData: number[][]; contribValues: number[] }> = {
-  week: { commits: '124', added: '432', removed: '198', change: '↑ 5%', bars: ['30%','45%','20%','55%','40%','35%','60%','50%','38%','42%','48%','52%','35%','28%'], sparkData: [[40,60,35,80,55,90,70],[55,70,45,85,65,95,75],[30,50,25,60,40,55,35]], contribValues: [42, 8, 3, 12, 2] },
-  month: { commits: '487', added: '1,234', removed: '456', change: '↑ 23%', bars: ['60%','80%','45%','90%','70%','55%','85%','40%','75%','65%','95%','50%','80%','60%'], sparkData: [[40,60,35,80,55,90,70],[55,70,45,85,65,95,75],[30,50,25,60,40,55,35]], contribValues: [487, 23, 12, 34, 8] },
-  year: { commits: '2,847', added: '12,456', removed: '4,321', change: '↑ 45%', bars: ['40%','55%','60%','75%','80%','65%','70%','85%','90%','75%','60%','55%','70%','65%'], sparkData: [[50,65,55,80,70,85,75],[60,75,65,90,80,95,85],[40,55,45,70,60,75,50]], contribValues: [2847, 156, 89, 234, 45] },
+function KPI({ label, value }: { label: string; value: string }) {
+  return (
+    <Card padding={16}>
+      <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, color: 'var(--text)', lineHeight: 1.1, marginTop: 6 }}>{value}</div>
+    </Card>
+  )
 }
 
-const LANG_COLORS: Record<string, string> = {
-  TypeScript: '#3178c6',
-  JavaScript: '#f1e05a',
-  Python: '#3572A5',
-  Java: '#b07219',
-  Go: '#00ADD8',
-  Rust: '#dea584',
-  Ruby: '#701516',
-  'C++': '#f34b7d',
-  'C#': '#178600',
-  PHP: '#4F5D95',
-  Swift: '#ffac45',
-  Kotlin: '#F18E33',
-  Dart: '#00B4AB',
-  Scala: '#c22d40',
-  Shell: '#89e051',
-  HTML: '#e34c26',
-  CSS: '#563d7c',
-  Lua: '#000080',
+function CardHead({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+        {sub && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{sub}</div>}
+      </div>
+      {right}
+    </div>
+  )
 }
-
-const contribItems = [
-  { label: 'Commits', color: '#58a6ff', icon: <><circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/></> },
-  { label: 'Pull Requests', color: '#3fb950', icon: <><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></> },
-  { label: 'Issues', color: '#d29922', icon: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></> },
-  { label: 'Reviews', color: '#a371f7', icon: <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></> },
-  { label: 'Discussions', color: '#f85149', icon: <><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></> },
-]
-
-const CIRCUMFERENCE = 2 * Math.PI * 40
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = useState('month')
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null)
-  const [hoveredLang, setHoveredLang] = useState<string | null>(null)
-  const [apiData, setApiData] = useState<any>(null)
+  const { repos, total, isLoading, error } = useRepositories()
+  const { data: session } = useSession()
+  const username = (session?.user?.name || 'you').split(' ')[0]
 
-  useEffect(() => {
-    fetch('/api/analytics')
-      .then(r => r.json())
-      .then(d => setApiData(d))
-      .catch(() => {})
-  }, [])
+  const topNav = (
+    <TopNav title="Analytics" subtitle="Activity, languages, and stack · last 12 months" actions={
+      <Button variant="ai" size="sm" icon={<Icon.Sparkle size={12} />} onClick={() => { fetch('/api/ai/analyze-profile', { method: 'POST' }).then(() => toast.success('Asking Claude…')) }}>Ask Claude</Button>
+    } />
+  )
 
-  const periodData = chartData[period]
+  if (isLoading) return <PageShell topNav={topNav}><div style={{ padding: 24, color: 'var(--text-3)' }}>Loading analytics…</div></PageShell>
+  if (error) return (
+    <PageShell topNav={topNav}>
+      <div style={{ padding: 24 }}><Card padding={20}><p style={{ color: 'var(--danger)', marginBottom: 12 }}>Failed to load analytics.</p><Button variant="secondary" size="sm" onClick={() => window.location.reload()}>Retry</Button></Card></div>
+    </PageShell>
+  )
 
-  const displayData = {
-    healthScore: apiData?.totalHealthScore?.toLocaleString() || '487',
-    stars: apiData?.totalStars?.toLocaleString() || '1,234',
-    forks: apiData?.totalForks?.toLocaleString() || '456',
-    repos: apiData?.totalRepos?.toLocaleString() || '47',
+  const totalStars = repos.reduce((s: number, r: Repository) => s + (r.stargazersCount || 0), 0)
+  const totalForks = repos.reduce((s: number, r: Repository) => s + (r.forksCount || 0), 0)
+  const avgHealth = repos.length ? Math.round(repos.reduce((s: number, r: Repository) => s + (r.healthScore || 0), 0) / repos.length) : 0
+  const langs = deriveLanguages(repos, 5)
+
+  // repos updated per month, last 12 months
+  const perMonth = Array(12).fill(0)
+  repos.forEach((r: Repository) => {
+    if (!r.pushedAt) return
+    const m = Math.floor((Date.now() - new Date(r.pushedAt).getTime()) / 2629800000)
+    if (m >= 0 && m < 12) perMonth[11 - m]++
+  })
+  const monthLabels = Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - (11 - i)); return d.toLocaleString('en', { month: 'short' }) })
+
+  // stack graph: me + top languages
+  const network: NetworkData = {
+    nodes: [
+      { id: 'me', name: username, x: 0.5, y: 0.5, repos: 22, accent: true },
+      ...langs.map((l, i) => {
+        const a = (i / Math.max(1, langs.length)) * Math.PI * 2
+        return { id: l.name, name: l.name, x: 0.5 + 0.34 * Math.cos(a), y: 0.5 + 0.34 * Math.sin(a), repos: Math.round(l.pct / 5) + 4 }
+      }),
+    ],
+    edges: langs.map((l) => ['me', l.name, 5] as [string, string, number]),
   }
 
-  const langEntries = apiData?.languageDistribution
-    ? Object.entries(apiData.languageDistribution as Record<string, number>)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 6)
-    : []
-
-  const totalLangCount = langEntries.reduce((s, [, c]) => s + (c as number), 0)
-  let donutOffset = 0
-  const donutSegments = totalLangCount > 0
-    ? langEntries.map(([lang, count]) => {
-        const pct = (count as number) / totalLangCount
-        const dash = pct * CIRCUMFERENCE
-        const seg = { lang: lang as string, dash, offset: donutOffset, color: LANG_COLORS[lang as string] || '#636e72' }
-        donutOffset -= dash
-        return seg
-      })
-    : []
-
-  const topRepos = apiData?.topRepos || []
+  // peak activity by day/hour from push times
+  const grid = Array.from({ length: 7 }, () => Array(12).fill(0))
+  repos.forEach((r: Repository) => {
+    if (!r.pushedAt) return
+    const d = new Date(r.pushedAt)
+    const day = (d.getDay() + 6) % 7
+    grid[day][Math.floor(d.getHours() / 2)]++
+  })
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   return (
-    <div className="py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-[28px] font-semibold" style={{ color: 'var(--color-text)' }}>Analytics</h1>
-        <div className="flex gap-2">
-          {['Week', 'Month', 'Year'].map((f) => {
-            const key = f.toLowerCase()
-            return (
-              <button
-                key={f}
-                onClick={() => setPeriod(key)}
-                className="px-3.5 py-2 text-sm rounded cursor-pointer transition-colors"
-                style={{
-                  background: period === key ? 'var(--color-surface-hover)' : 'var(--color-surface)',
-                  border: `1px solid ${period === key ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                  color: period === key ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                }}
-              >
-                {f}
-              </button>
-            )
-          })}
+    <PageShell topNav={topNav}>
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="gf-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          <KPI label="Repositories" value={String(total)} />
+          <KPI label="Total stars" value={totalStars.toLocaleString()} />
+          <KPI label="Total forks" value={String(totalForks)} />
+          <KPI label="Avg health" value={`${avgHealth}%`} />
         </div>
-      </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {[
-          { value: displayData.repos, label: 'Total Repositories', color: '#58a6ff', statKey: 'repo' },
-          { value: displayData.stars, label: 'Total Stars', color: '#d29922', statKey: 'stars' },
-          { value: displayData.healthScore, label: 'Health Score', color: '#3fb950', statKey: 'health' },
-        ].map((s, idx) => {
-          return (
-            <div
-              key={s.label}
-              className="p-5 rounded-lg transition-all"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="text-[28px] font-bold" style={{ color: 'var(--color-text)' }}>{s.value}</div>
-                <div
-                  className="w-9 h-9 flex items-center justify-center rounded"
-                  style={{ background: `${s.color}26`, color: s.color }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    {s.statKey === 'repo' && <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>}
-                    {s.statKey === 'stars' && <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>}
-                    {s.statKey === 'health' && <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>}
-                  </svg>
-                </div>
-              </div>
-              <div className="text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>{s.label}</div>
-              <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                Synced from GitHub
-              </div>
-              <div className="flex items-end gap-1 h-8 mt-3">
-                {periodData.sparkData[idx]?.map((h: number, i: number) => (
-                  <div key={i} className="flex-1 rounded-sm transition-all" style={{ height: `${h}%`, background: s.color }} />
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-6">
-        <div className="p-5 rounded-lg" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <h2 className="text-base font-semibold mb-5" style={{ color: 'var(--color-text)' }}>Commit Activity (Last 30 Days)</h2>
-          <div className="flex items-end gap-2 h-48 px-2 relative">
-            {periodData.bars.map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 relative"
-                onMouseEnter={() => setHoveredBar(i)}
-                onMouseLeave={() => setHoveredBar(null)}
-              >
-                <div
-                  className="rounded-t transition-all cursor-pointer"
-                  style={{
-                    height: h,
-                    background: hoveredBar === i ? 'var(--color-success)' : 'var(--color-accent)',
-                  }}
-                />
-                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{i + 1}</div>
-                {hoveredBar === i && (
-                  <div
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 rounded-lg px-3 py-2 text-xs whitespace-nowrap"
-                    style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                  >
-                    <div className="font-semibold mb-1" style={{ color: 'var(--color-text)' }}>Day {i + 1}</div>
-                    <div style={{ color: 'var(--color-text-secondary)' }}>Commits: {Math.round(parseInt(periodData.commits) * (parseInt(h) / 100))}</div>
-                  </div>
-                )}
-              </div>
-            ))}
+        <div className="gf-dash-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+            <Card>
+              <CardHead title="Repository activity" sub="Repos updated per month" right={<Chip color="var(--accent)" dot>last 12 months</Chip>} />
+              <Bars data={perMonth} height={140} labels={monthLabels} />
+            </Card>
+            <Card style={{ display: 'flex', flexDirection: 'column' }}>
+              <CardHead title="Your stack graph" sub={`${langs.length} core languages`} />
+              <div style={{ height: 300 }}><Network data={network} /></div>
+            </Card>
           </div>
-        </div>
 
-        <div className="p-5 rounded-lg" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <h2 className="text-base font-semibold mb-5" style={{ color: 'var(--color-text)' }}>Language Distribution</h2>
-          {donutSegments.length > 0 ? (
-            <>
-              <div className="flex flex-col items-center relative">
-                <svg viewBox="0 0 100 100" width="180" height="180" className="transform -rotate-90">
-                  {donutSegments.map((s) => (
-                    <circle
-                      key={s.lang}
-                      cx="50" cy="50" r="40"
-                      fill="transparent"
-                      stroke={s.color}
-                      strokeWidth="20"
-                      strokeDasharray={`${s.dash} ${CIRCUMFERENCE}`}
-                      strokeDashoffset={s.offset}
-                      className="cursor-pointer transition-opacity"
-                      style={{ opacity: hoveredLang && hoveredLang !== s.lang ? 0.3 : 1 }}
-                      onMouseEnter={() => setHoveredLang(s.lang)}
-                      onMouseLeave={() => setHoveredLang(null)}
-                    />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+            <Card>
+              <CardHead title="Language distribution" right={<Chip>by bytes</Chip>} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <Donut data={langs} size={150} thickness={24} centerValue={String(new Set(repos.map((r: Repository) => r.language).filter(Boolean)).size)} centerLabel="LANGUAGES" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {langs.map((l) => (
+                    <div key={l.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text)' }}><LangDot lang={l.name} />{l.name}</span>
+                      <span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{l.pct.toFixed(1)}%</span>
+                    </div>
                   ))}
-                </svg>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                  <div className="text-2xl font-bold" style={{ color: 'var(--color-accent)' }}>{apiData?.totalRepos || 0}</div>
-                  <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>repos</div>
+                  {langs.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>No language data</span>}
                 </div>
               </div>
-              <div className="flex flex-wrap justify-center gap-2 mt-4">
-                {langEntries.map(([lang, count]) => {
-                  const pct = totalLangCount > 0 ? Math.round(((count as number) / totalLangCount) * 100) : 0
-                  const color = LANG_COLORS[lang as string] || '#636e72'
-                  return (
-                    <div
-                      key={lang}
-                      className="flex items-center gap-1.5 text-sm px-2 py-1 rounded cursor-pointer transition-all"
-                      style={{
-                        color: hoveredLang && hoveredLang !== lang ? 'var(--color-text-muted)' : 'var(--color-text-secondary)',
-                        background: hoveredLang === lang ? 'var(--color-surface-hover)' : 'transparent',
-                      }}
-                      onMouseEnter={() => setHoveredLang(lang)}
-                      onMouseLeave={() => setHoveredLang(null)}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                      {lang} {pct}%
-                    </div>
-                  )
-                })}
-              </div>
-              {hoveredLang && (() => {
-                const entry = langEntries.find(([l]) => l === hoveredLang)
-                if (!entry) return null
-                const [, count] = entry
-                return (
-                  <div
-                    className="mt-3 text-xs rounded-lg px-3 py-2"
-                    style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                  >
-                    <span className="font-semibold">{hoveredLang}</span>
-                    <span className="ml-2" style={{ color: 'var(--color-text-secondary)' }}>{count as number} repos</span>
-                  </div>
-                )
-              })()}
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-[200px] text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              No data yet
-            </div>
-          )}
-        </div>
-      </div>
+            </Card>
 
-      {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-5 rounded-lg" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <h2 className="text-base font-semibold mb-5" style={{ color: 'var(--color-text)' }}>Top Repositories by Activity</h2>
-          <div className="flex flex-col gap-3">
-            {topRepos.length > 0 ? (
-              topRepos.map((r: { name: string; stars: number; forks: number; commits: number }, _i: number, arr: { name: string; stars: number; forks: number; commits: number }[]) => {
-                const maxCommits = Math.max(...arr.map(x => x.commits), 1)
-                const pct = (r.commits / maxCommits) * 100
-                return (
-                  <div key={r.name} className="flex items-center gap-4 py-2">
-                    <span className="text-sm min-w-[140px]" style={{ color: 'var(--color-accent)' }}>{r.name}</span>
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-surface-hover)' }}>
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--color-accent)' }} />
-                    </div>
-                    <span className="text-sm font-semibold min-w-[40px] text-right" style={{ color: 'var(--color-text-muted)' }}>{r.commits}</span>
-                  </div>
-                )
-              })
-            ) : (
-              <div className="text-sm py-4 text-center" style={{ color: 'var(--color-text-muted)' }}>No repositories yet</div>
-            )}
-          </div>
-        </div>
-
-        <div className="p-5 rounded-lg" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <h2 className="text-base font-semibold mb-5" style={{ color: 'var(--color-text)' }}>Contribution Breakdown</h2>
-          <div className="flex flex-col gap-4">
-            {contribItems.map((c, i) => (
-              <div key={c.label} className="flex items-center gap-3 py-1">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.color} strokeWidth="2">
-                  {c.icon}
-                </svg>
-                <span className="flex-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{c.label}</span>
-                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                  {i === 0 ? (apiData?.totalHealthScore?.toLocaleString() || periodData.contribValues[0]) : periodData.contribValues[i]}
-                </span>
+            <Card padding={16} style={{ borderColor: 'color-mix(in oklab, var(--ai) 25%, var(--border))', background: 'linear-gradient(135deg, var(--ai-soft) 0%, transparent 60%)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <Icon.Sparkle size={14} style={{ color: 'var(--ai)' }} />
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>AI takeaway</div>
               </div>
-            ))}
+              <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>
+                {langs[0]
+                  ? <>Your strongest signal is in <b className="gf-ai-text">{langs[0].name}</b> ({langs[0].pct.toFixed(0)}% of your code) across {total} repos with an average health of {avgHealth}%.</>
+                  : <>Sync your repositories to generate an AI takeaway on your stack and activity.</>}
+              </div>
+              <Button variant="ghost" size="sm" iconRight={<Icon.ArrowR size={11} />} style={{ marginTop: 12, paddingLeft: 0 }} onClick={() => { fetch('/api/ai/analyze-profile', { method: 'POST' }).then(() => toast.success('Generating report…')) }}>Generate full report</Button>
+            </Card>
+
+            <Card>
+              <CardHead title="Peak activity hours" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {grid.map((row, ri) => (
+                  <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-3)', width: 22, textTransform: 'uppercase', letterSpacing: 0.6 }}>{days[ri]}</span>
+                    {row.map((v, i) => (
+                      <div key={i} style={{ flex: 1, height: 14, borderRadius: 2, background: v === 0 ? 'var(--surface-2)' : `color-mix(in oklab, var(--accent) ${Math.min(100, 20 + v * 14)}%, var(--surface-2))` }} />
+                    ))}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 6, marginLeft: 28, marginTop: 6 }}>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <span key={i} style={{ flex: 1, fontSize: 9, color: 'var(--text-3)', textAlign: 'center' }}>{i < 6 ? '0' + 2 * i : 2 * i}</span>
+                  ))}
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -4,7 +4,9 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { Logo, Icon, Avatar, Kbd, type IconName } from './primitives'
+import { Logo, Icon, Avatar, type IconName } from './primitives'
+import { CommandPalette } from './CommandPalette'
+import { NotifBell } from './NotifBell'
 
 type NavItem = { label: string; icon: IconName; href: string }
 
@@ -100,21 +102,9 @@ export function TopNav({ title, subtitle, search = true, actions }: {
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', letterSpacing: -0.1 }}>{title}</div>
         {subtitle && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{subtitle}</div>}
       </div>
-      {search && (
-        <div style={{ width: 280, position: 'relative' }} className="gf-topnav-search">
-          <Icon.Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: 'var(--text-3)' }} />
-          <input placeholder="Search repos, users, code…" style={{
-            width: '100%', height: 32, padding: '0 60px 0 32px', background: 'var(--surface-2)',
-            border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 12, fontFamily: 'inherit', outline: 'none',
-          }} />
-          <span style={{ position: 'absolute', right: 8, top: 7 }}><Kbd>⌘K</Kbd></span>
-        </div>
-      )}
+      {search && <CommandPalette />}
       {actions}
-      <button style={{ width: 32, height: 32, borderRadius: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-        <Icon.Bell size={14} />
-        <span style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: 3, background: 'var(--accent)' }} />
-      </button>
+      <NotifBell />
       <Avatar src={user?.image} name={user?.name || 'User'} size={28} />
     </header>
   )

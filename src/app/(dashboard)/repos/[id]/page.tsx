@@ -2,335 +2,254 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
+import Markdown from 'react-markdown'
 import { useRepository } from '@/hooks/useRepositories'
-import { useRepoAnalysis, useAnalyzeRepo } from '@/hooks/useAnalysis'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Input'
-import { ProgressRing } from '@/components/ui/ProgressRing'
-import { AnalysisSkeleton } from '@/components/ui/skeletons'
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import { formatRelativeTime } from '@/lib/utils'
-import { getLanguageColor } from '@/lib/languages'
-import { Star, GitFork, Eye, ExternalLink, Lock, GitFork as ForkIcon, Zap } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
+import { useAnalyzeRepo, useGenerateReadme } from '@/hooks/useAnalysis'
+import { PageShell, TopNav } from '@/components/gf/AppShell'
+import { Card, Button, Icon, Chip, LangDot, Divider, AIBadge } from '@/components/gf/primitives'
+import { rel } from '@/lib/gf-derive'
+import { toast } from '@/components/ui/Toast'
 
-type Tab = 'analysis' | 'readme' | 'dependencies' | 'raw'
+type Issue = { severity: 'critical' | 'warning' | 'suggestion'; category: string; issue: string; fix: string }
+type Suggestions = {
+  summary?: string
+  strengths?: string[]
+  issues?: Issue[]
+  suggestedTopics?: string[]
+  suggestedDescription?: string
+  readmeSuggestion?: string
+  recruiterImpact?: string
+}
 
-export default function RepoDetailPage() {
-  const params = useParams()
-  const id = params.id as string
-  const { data: repo, isLoading } = useRepository(id)
-  const { data: existingAnalysis } = useRepoAnalysis(id)
-  const { mutate: analyze, isPending: isAnalyzing } = useAnalyzeRepo()
-  const [activeTab, setActiveTab] = useState<Tab>('analysis')
-  const [generatedReadme, setGeneratedReadme] = useState<string | null>(null)
-  const [isGeneratingReadme, setIsGeneratingReadme] = useState(false)
+const SEVERITY_COLOR: Record<Issue['severity'], string> = {
+  critical: 'var(--danger)',
+  warning: 'var(--warn)',
+  suggestion: 'var(--info)',
+}
 
-  if (isLoading) return <AnalysisSkeleton />
-
-  if (!repo) return <div className="text-white">Repository not found</div>
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'analysis', label: 'AI Analysis' },
-    { id: 'readme', label: 'README' },
-    { id: 'dependencies', label: 'Dependencies' },
-    { id: 'raw', label: 'Raw Data' },
-  ]
-
-  const healthColor = repo.healthScore >= 70 ? 'text-emerald-500' : repo.healthScore >= 40 ? 'text-yellow-500' : 'text-red-500'
-
+function Section({ title, children, badge }: { title: string; children: React.ReactNode; badge?: boolean }) {
   return (
-    <ErrorBoundary>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-white">{repo.name}</h1>
-              {repo.isPrivate && <Badge variant="default"><Lock className="w-3 h-3 mr-1" /> Private</Badge>}
-              {repo.isFork && <Badge variant="default"><ForkIcon className="w-3 h-3 mr-1" /> Fork</Badge>}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-400">
-              <a href={`https://github.com/${repo.fullName}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-400">
-                <ExternalLink className="w-4 h-4" /> {repo.fullName}
-              </a>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <ProgressRing progress={repo.healthScore} size={64} />
-              <p className={`text-sm font-medium mt-1 ${healthColor}`}>Health</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Badge variant="info" className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLanguageColor(repo.language) }} />
-            {repo.language || 'Unknown'}
-          </Badge>
-          <Badge variant="default" className="flex items-center gap-1">
-            <Star className="w-3 h-3" /> {repo.stargazersCount} stars
-          </Badge>
-          <Badge variant="default" className="flex items-center gap-1">
-            <GitFork className="w-3 h-3" /> {repo.forksCount} forks
-          </Badge>
-          <Badge variant="default" className="flex items-center gap-1">
-            <Eye className="w-3 h-3" /> {repo.openIssuesCount} issues
-          </Badge>
-          <span className="text-sm text-gray-500">Updated {formatRelativeTime(repo.pushedAt)}</span>
-        </div>
-
-        {repo.topics?.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {repo.topics.map((topic: string) => (
-              <span key={topic} className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 text-sm">
-                {topic}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="border-b border-gray-800">
-          <div className="flex gap-4">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-emerald-500 text-emerald-400'
-                    : 'border-transparent text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {activeTab === 'analysis' && (
-          <AnalysisTab
-            repoId={id}
-            analysis={existingAnalysis}
-            isAnalyzing={isAnalyzing}
-            onAnalyze={() => analyze(id)}
-          />
-        )}
-
-        {activeTab === 'readme' && (
-          <ReadmeTab
-            readme={repo.readme}
-            generatedReadme={generatedReadme}
-            isGenerating={isGeneratingReadme}
-            onGenerate={async () => {
-              setIsGeneratingReadme(true)
-              try {
-                const res = await fetch('/api/ai/generate-readme', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ repoId: id }),
-                })
-                const data = await res.json()
-                setGeneratedReadme(data.readme)
-              } finally {
-                setIsGeneratingReadme(false)
-              }
-            }}
-          />
-        )}
-
-        {activeTab === 'dependencies' && (
-          <DependenciesTab dependencies={repo.dependencies} />
-        )}
-
-        {activeTab === 'raw' && (
-          <Card>
-            <pre className="text-sm text-gray-300 overflow-auto max-h-96">
-              {JSON.stringify(repo, null, 2)}
-            </pre>
-          </Card>
-        )}
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{title}</h2>
+        {badge && <AIBadge>AI</AIBadge>}
       </div>
-    </ErrorBoundary>
+      {children}
+    </Card>
   )
 }
 
-function AnalysisTab({ repoId, analysis, isAnalyzing, onAnalyze }: { repoId: string; analysis: any; isAnalyzing: boolean; onAnalyze: () => void }) {
-  if (!analysis && !isAnalyzing) {
-    return (
-      <Card className="text-center py-12">
-        <Zap className="w-12 h-12 mx-auto mb-4 text-emerald-500 opacity-50" />
-        <h3 className="text-lg font-medium text-white mb-2">Analyze with AI</h3>
-        <p className="text-gray-400 mb-6">Get intelligent suggestions to improve this repository</p>
-        <Button onClick={onAnalyze}>Start Analysis</Button>
-      </Card>
-    )
-  }
-
-  if (isAnalyzing) return <AnalysisSkeleton />
-
-  if (!analysis?.aiSuggestions) return <AnalysisSkeleton />
-
-  const suggestions = analysis.aiSuggestions
-
+function MarkdownBox({ content }: { content: string }) {
   return (
-    <div className="space-y-6">
-      <Card>
-        <p className="text-gray-300">{suggestions.summary}</p>
-      </Card>
-
-      {suggestions.strengths?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-emerald-400">Strengths</CardTitle>
-          </CardHeader>
-          <ul className="space-y-2">
-            {suggestions.strengths.map((s: string, i: number) => (
-              <li key={i} className="flex items-start gap-2 text-gray-300">
-                <span className="text-emerald-500">✓</span> {s}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      {suggestions.issues?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Issues & Fixes</CardTitle>
-          </CardHeader>
-          <div className="space-y-4">
-            {suggestions.issues.map((issue: any, i: number) => (
-              <div key={i} className={`p-4 rounded-lg border ${
-                issue.severity === 'critical' ? 'border-red-700 bg-red-900/20' :
-                issue.severity === 'warning' ? 'border-yellow-700 bg-yellow-900/20' :
-                'border-blue-700 bg-blue-900/20'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={issue.severity === 'critical' ? 'danger' : issue.severity === 'warning' ? 'warning' : 'info'}>
-                    {issue.severity}
-                  </Badge>
-                  <Badge variant="default">{issue.category}</Badge>
-                </div>
-                <p className="text-white font-medium">{issue.issue}</p>
-                <p className="text-gray-400 text-sm mt-1"><span className="text-emerald-400">Fix:</span> {issue.fix}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {suggestions.suggestedTopics?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Suggested Topics</CardTitle>
-          </CardHeader>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.suggestedTopics.map((topic: string) => (
-              <span key={topic} className="px-3 py-1 rounded-full bg-emerald-900/30 text-emerald-400 text-sm">
-                {topic}
-              </span>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {suggestions.suggestedDescription && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Suggested Description</CardTitle>
-          </CardHeader>
-          <p className="text-gray-300">{suggestions.suggestedDescription}</p>
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => navigator.clipboard.writeText(suggestions.suggestedDescription)}>
-            Copy Description
-          </Button>
-        </Card>
-      )}
-
-      {suggestions.readmeSuggestion && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Generated README</CardTitle>
-          </CardHeader>
-          <div className="bg-gray-800/50 rounded-lg p-4 prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown>
-              {suggestions.readmeSuggestion}
-            </ReactMarkdown>
-          </div>
-        </Card>
-      )}
+    <div className="gf-md" style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, maxHeight: 460, overflow: 'auto', padding: '14px 16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
+      <Markdown>{content}</Markdown>
     </div>
   )
 }
 
-function ReadmeTab({ readme, generatedReadme, isGenerating, onGenerate }: { readme: string | null; generatedReadme: string | null; isGenerating: boolean; onGenerate: () => void }) {
-  const content = readme || generatedReadme
+export default function RepoDetailPage() {
+  const id = useParams().id as string
+  const { data: repo, isLoading } = useRepository(id)
+  const analyze = useAnalyzeRepo()
+  const genReadme = useGenerateReadme()
+  const [generatedReadme, setGeneratedReadme] = useState<string | null>(null)
 
-  if (!content) {
+  if (isLoading) {
     return (
-      <Card className="text-center py-12">
-        <p className="text-gray-400 mb-4">No README found for this repository</p>
-        <Button onClick={onGenerate} disabled={isGenerating}>
-          {isGenerating ? 'Generating...' : 'Generate README with AI'}
-        </Button>
-      </Card>
+      <PageShell topNav={<TopNav title="Repository" subtitle="Loading…" />}>
+        <div style={{ padding: 24, color: 'var(--text-3)' }}>Loading repository…</div>
+      </PageShell>
     )
   }
 
-  return (
-    <Card>
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-gray-400">{readme ? 'Current README' : 'Generated README'}</span>
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(content)}>
-            Copy
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => {
-            const blob = new Blob([content], { type: 'text/markdown' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'README.md'
-            a.click()
-          }}>
-            Download
-          </Button>
-        </div>
-      </div>
-      <div className="bg-gray-800/50 rounded-lg p-6 prose prose-invert prose-sm max-w-none">
-        <ReactMarkdown>
-          {content}
-        </ReactMarkdown>
-      </div>
-    </Card>
-  )
-}
-
-function DependenciesTab({ dependencies }: { dependencies: Record<string, string> | null }) {
-  if (!dependencies || Object.keys(dependencies).length === 0) {
-    return <Card className="text-center py-12"><p className="text-gray-400">No dependencies detected</p></Card>
+  if (!repo || repo.error) {
+    return (
+      <PageShell topNav={<TopNav title="Repository" subtitle="Not found" actions={<Button variant="secondary" size="sm" href="/repos">Back</Button>} />}>
+        <div style={{ padding: 24 }}><Card padding={24}><p style={{ color: 'var(--text-2)' }}>This repository could not be found.</p></Card></div>
+      </PageShell>
+    )
   }
 
+  const suggestions: Suggestions | null = repo.analysis?.aiSuggestions || null
+  const health = Math.round(repo.healthScore || 0)
+  const healthColor = health >= 70 ? 'var(--success)' : health >= 45 ? 'var(--warn)' : 'var(--danger)'
+  const deps: Record<string, string> = repo.dependencies || {}
+  const depEntries = Object.entries(deps)
+  const readmeContent = generatedReadme || repo.readme || null
+
+  const runAnalyze = () => {
+    if (analyze.isPending) return
+    analyze.mutate(id, {
+      onSuccess: () => toast.success('Analysis complete'),
+      onError: () => toast.error('Analysis failed'),
+    })
+  }
+  const runReadme = () => {
+    if (genReadme.isPending) return
+    genReadme.mutate(id, {
+      onSuccess: (data) => { setGeneratedReadme(data.readme); toast.success('README drafted') },
+      onError: () => toast.error('Could not generate README'),
+    })
+  }
+
+  const topNav = (
+    <TopNav
+      title={repo.name}
+      subtitle={repo.fullName}
+      actions={
+        <>
+          <Button variant="secondary" size="sm" icon={<Icon.Github size={13} />} href={`https://github.com/${repo.fullName}`}>GitHub</Button>
+          <Button variant="ai" size="sm" icon={<Icon.Sparkle size={12} />} disabled={analyze.isPending} onClick={runAnalyze}>{analyze.isPending ? 'Analyzing…' : suggestions ? 'Re-analyze' : 'Analyze with AI'}</Button>
+        </>
+      }
+    />
+  )
+
   return (
-    <Card>
-      <table className="w-full">
-        <thead>
-          <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
-            <th className="pb-2">Package</th>
-            <th className="pb-2">Version</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(dependencies).map(([name, version]) => (
-            <tr key={name} className="border-b border-gray-800/50">
-              <td className="py-2 text-white">{name}</td>
-              <td className="py-2 text-gray-400">{version}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
+    <PageShell topNav={topNav}>
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <a href="/repos" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-3)', textDecoration: 'none', width: 'fit-content' }}>
+          <Icon.ChevronR size={13} style={{ transform: 'rotate(180deg)' }} />Repositories
+        </a>
+
+        <div className="gf-profile-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
+          {/* left: meta */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1 }}>Health score</span>
+              </div>
+              <div style={{ fontSize: 44, fontWeight: 700, letterSpacing: -1.5, color: healthColor, lineHeight: 1 }}>{health}<span style={{ fontSize: 18, color: 'var(--text-3)' }}>/100</span></div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+                <Chip>{repo.isPrivate ? 'Private' : 'Public'}</Chip>
+                {repo.isFork && <Chip color="var(--warn)" dot>Fork</Chip>}
+              </div>
+            </Card>
+
+            <Card>
+              <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, marginBottom: 14 }}>{repo.description || <span style={{ color: 'var(--text-3)' }}>No description</span>}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                {repo.language && <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-2)' }}><LangDot lang={repo.language} />{repo.language}</div>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-2)' }}><Icon.Star size={13} />{(repo.stargazersCount || 0).toLocaleString()} stars</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-2)' }}><Icon.Fork size={13} />{repo.forksCount || 0} forks</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-2)' }}><Icon.Eye size={13} />{repo.openIssuesCount || 0} open issues</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-3)' }}><Icon.Clock size={13} />Updated {rel(repo.pushedAt)} ago</div>
+              </div>
+              {repo.topics?.length > 0 && (
+                <>
+                  <Divider style={{ margin: '14px 0' }} />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {repo.topics.map((t: string) => (
+                      <span key={t} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 500 }}>{t}</span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Card>
+
+            <Section title={`Dependencies${depEntries.length ? ` · ${depEntries.length}` : ''}`}>
+              {depEntries.length ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflow: 'auto' }}>
+                  {depEntries.map(([name, version]) => (
+                    <div key={name} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                      <span className="mono" style={{ color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                      <span className="mono" style={{ color: 'var(--text-3)', flexShrink: 0 }}>{String(version)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <span style={{ fontSize: 13, color: 'var(--text-3)' }}>No dependencies detected.</span>}
+            </Section>
+          </div>
+
+          {/* right: AI analysis + README */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+            {!suggestions && !analyze.isPending && (
+              <Card padding={32} style={{ textAlign: 'center', borderColor: 'color-mix(in oklab, var(--ai) 25%, var(--border))' }}>
+                <Icon.Sparkle size={26} style={{ color: 'var(--ai)' }} />
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginTop: 10 }}>Analyze this repository</div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4, marginBottom: 16 }}>Claude reviews docs, metadata, and structure, then suggests fixes.</div>
+                <Button variant="ai" size="md" icon={<Icon.Sparkle size={13} />} onClick={runAnalyze}>Start analysis</Button>
+              </Card>
+            )}
+
+            {analyze.isPending && <Card padding={24}><span style={{ fontSize: 13, color: 'var(--text-3)' }}>Analyzing with Claude — this can take a moment…</span></Card>}
+
+            {suggestions && (
+              <>
+                {suggestions.summary && (
+                  <Section title="Summary" badge>
+                    <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, margin: 0 }}>{suggestions.summary}</p>
+                    {suggestions.recruiterImpact && <div style={{ marginTop: 12 }}><Chip color="var(--ai)" dot>Recruiter impact: {suggestions.recruiterImpact}</Chip></div>}
+                  </Section>
+                )}
+
+                {!!suggestions.strengths?.length && (
+                  <Section title="Strengths">
+                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {suggestions.strengths.map((s, i) => (
+                        <li key={i} style={{ display: 'flex', gap: 8, fontSize: 13, color: 'var(--text-2)' }}>
+                          <Icon.Check size={14} style={{ color: 'var(--success)', flexShrink: 0, marginTop: 2 }} />{s}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                )}
+
+                {!!suggestions.issues?.length && (
+                  <Section title="Issues & fixes">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {suggestions.issues.map((it, i) => (
+                        <div key={i} style={{ padding: 12, borderRadius: 10, background: 'var(--surface-2)', border: `1px solid color-mix(in oklab, ${SEVERITY_COLOR[it.severity] || 'var(--border)'} 30%, var(--border))` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                            <Chip color={SEVERITY_COLOR[it.severity]} dot>{it.severity}</Chip>
+                            <Chip>{it.category}</Chip>
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{it.issue}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}><span style={{ color: 'var(--accent)' }}>Fix:</span> {it.fix}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
+                {(!!suggestions.suggestedTopics?.length || suggestions.suggestedDescription) && (
+                  <Section title="Suggested metadata" badge>
+                    {suggestions.suggestedDescription && (
+                      <div style={{ marginBottom: suggestions.suggestedTopics?.length ? 14 : 0 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Description</div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, margin: 0, flex: 1 }}>{suggestions.suggestedDescription}</p>
+                          <Button variant="secondary" size="sm" icon={<Icon.Copy size={12} />} onClick={() => { navigator.clipboard?.writeText(suggestions.suggestedDescription!); toast.success('Copied') }}>Copy</Button>
+                        </div>
+                      </div>
+                    )}
+                    {!!suggestions.suggestedTopics?.length && (
+                      <div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Topics</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {suggestions.suggestedTopics.map((t) => <span key={t} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 500 }}>{t}</span>)}
+                        </div>
+                      </div>
+                    )}
+                  </Section>
+                )}
+              </>
+            )}
+
+            {/* README */}
+            <Section title="README" badge>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{generatedReadme ? 'AI-generated draft' : repo.readme ? 'Current README' : 'No README yet'}</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {readmeContent && <Button variant="secondary" size="sm" icon={<Icon.Copy size={12} />} onClick={() => { navigator.clipboard?.writeText(readmeContent); toast.success('Copied') }}>Copy</Button>}
+                  <Button variant="ai" size="sm" icon={<Icon.Sparkle size={12} />} disabled={genReadme.isPending} onClick={runReadme}>{genReadme.isPending ? 'Drafting…' : repo.readme ? 'Regenerate' : 'Generate'}</Button>
+                </div>
+              </div>
+              {readmeContent ? <MarkdownBox content={readmeContent} /> : <span style={{ fontSize: 13, color: 'var(--text-3)' }}>Generate a README draft from this repo’s code and metadata.</span>}
+            </Section>
+          </div>
+        </div>
+      </div>
+    </PageShell>
   )
 }
-

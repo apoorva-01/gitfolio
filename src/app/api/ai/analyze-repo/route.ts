@@ -35,15 +35,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Repository not found' }, { status: 404 })
   }
 
-  const existing = await prisma.repoAnalysis.findFirst({
-    where: { repositoryId: repoId },
-    orderBy: { analyzedAt: 'desc' },
-  })
-
-  if (existing && Date.now() - existing.analyzedAt.getTime() > 24 * 60 * 60 * 1000) {
-    return NextResponse.json({ cached: true, analysis: existing })
-  }
-
   try {
     const result = await analyzeRepository(repo)
     const analysis = await prisma.repoAnalysis.create({

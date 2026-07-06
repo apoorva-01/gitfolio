@@ -1,237 +1,116 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRepositories } from '@/hooks/useRepositories'
+import { PageShell, TopNav } from '@/components/gf/AppShell'
+import { Card, Button, Icon, Chip, LangDot, Divider } from '@/components/gf/primitives'
+import { rel, deriveLanguages } from '@/lib/gf-derive'
 import type { Repository } from '@/store'
-import { Skeleton } from '@/components/ui/skeletons'
-import { formatRelativeTime } from '@/lib/utils'
 
-const langColors: Record<string, string> = {
-  TypeScript: '#3178c6',
-  JavaScript: '#f1e05a',
-  Python: '#3572A5',
-  Rust: '#dea584',
-  Go: '#00ADD8',
-  Vue: '#41b883',
-  CSS: '#563d7c',
-  HTML: '#e34c26',
-}
-
-function FilterDropdown({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
+function RepoCard({ repo }: { repo: Repository }) {
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="px-4 py-2.5 text-sm rounded cursor-pointer transition-colors"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: value === 'all' ? 'var(--color-text-secondary)' : 'var(--color-text)' }}
-      >
-        {value === 'all' ? label : value} ▾
-      </button>
-      {open && (
-        <div
-          className="absolute top-full left-0 mt-1 z-10 rounded py-1 min-w-[160px]"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-        >
-          {options.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => { onChange(opt === 'All' ? 'all' : opt); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer border-none"
-              style={{
-                background: (opt === 'All' && value === 'all') || opt === value ? 'var(--color-surface-hover)' : 'transparent',
-                color: (opt === 'All' && value === 'all') || opt === value ? 'var(--color-text)' : 'var(--color-text-secondary)',
-              }}
-            >
-              {opt}
-            </button>
+    <Link href={`/repos/${repo.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <Card padding={20} style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <Icon.Repo size={14} style={{ color: 'var(--text-3)' }} />
+          <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{repo.name}</span>
+          <Chip>{repo.isPrivate ? 'Private' : 'Public'}</Chip>
+        </div>
+        <Chip color={(repo.healthScore || 0) >= 70 ? 'var(--success)' : (repo.healthScore || 0) >= 45 ? 'var(--warn)' : 'var(--danger)'} dot>{Math.round(repo.healthScore || 0)}</Chip>
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.45, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', minHeight: 38 }}>
+        {repo.description || <span style={{ color: 'var(--text-3)' }}>No description</span>}
+      </div>
+      {repo.topics?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {repo.topics.slice(0, 3).map((t) => (
+            <span key={t} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 500 }}>{t}</span>
           ))}
         </div>
       )}
-    </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, color: 'var(--text-2)' }}>
+          {repo.language && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><LangDot lang={repo.language} />{repo.language}</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon.Star size={11} />{(repo.stargazersCount || 0).toLocaleString()}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon.Fork size={11} />{repo.forksCount || 0}</span>
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Updated {rel(repo.pushedAt)} ago</span>
+      </div>
+    </Card>
+    </Link>
   )
 }
 
 export default function ReposPage() {
-  const { repos, isLoading, error } = useRepositories()
-  const [view, setView] = useState<'grid' | 'list'>('grid')
-  const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [langFilter, setLangFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('updated')
+  const [q, setQ] = useState('')
+  const { repos, total, isLoading, error } = useRepositories()
 
-  const langCounts: Record<string, number> = {}
-  repos.forEach((r: Repository) => {
-    if (r.language) langCounts[r.language] = (langCounts[r.language] || 0) + 1
-  })
-  const langEntries = Object.entries(langCounts).sort(([, a], [, b]) => b - a)
-  const languages = [...new Set(repos.map((r: Repository) => r.language).filter(Boolean))] as string[]
-
-  const filtered = repos.filter((r: Repository) => {
-    const matchSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || (r.description ?? '').toLowerCase().includes(search.toLowerCase())
-    const visibility = r.isPrivate ? 'private' : 'public'
-    const matchType = typeFilter === 'all' || visibility === typeFilter
-    const matchLang = langFilter === 'all' || (r.language ?? '') === langFilter
-    return matchSearch && matchType && matchLang
-  })
-
-  const sorted = [...filtered].sort((a: Repository, b: Repository) => {
-    if (sortBy === 'name') return a.name.localeCompare(b.name)
-    if (sortBy === 'stars') return (b.stargazersCount || 0) - (a.stargazersCount || 0)
-    return new Date(b.pushedAt || 0).getTime() - new Date(a.pushedAt || 0).getTime()
-  })
-
-  if (isLoading) return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {Array.from({length: 6}).map((_, i) => (
-        <Skeleton key={i} className="h-40 rounded-lg" />
-      ))}
-    </div>
-  )
-
-  if (error) return (
-    <div className="text-center py-16">
-      <p style={{ color: 'var(--color-error)' }}>Failed to load repositories.</p>
-      <button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 text-sm rounded cursor-pointer" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>
-        Retry
-      </button>
-    </div>
-  )
+  const publicCount = repos.filter((r: Repository) => !r.isPrivate).length
+  const privateCount = repos.filter((r: Repository) => r.isPrivate).length
+  const langs = deriveLanguages(repos)
+  const query = q.trim().toLowerCase()
+  const shown: Repository[] = query
+    ? repos.filter((r: Repository) => r.name.toLowerCase().includes(query) || (r.description || '').toLowerCase().includes(query) || (r.language || '').toLowerCase().includes(query) || r.topics?.some((t) => t.toLowerCase().includes(query)))
+    : repos
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-[28px] font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Repositories</h1>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>All your repositories, synced from GitHub</p>
-      </div>
+    <PageShell topNav={<TopNav title="Repositories" subtitle={`${publicCount} public · ${privateCount} private`} />}>
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {isLoading && <div style={{ color: 'var(--text-3)' }}>Loading repositories…</div>}
+        {error && (
+          <Card padding={20}>
+            <p style={{ color: 'var(--danger)', marginBottom: 12 }}>Failed to load repositories.</p>
+            <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+          </Card>
+        )}
 
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-        <div className="flex gap-3 flex-1 flex-wrap items-center">
-          <div className="relative flex-1 max-w-[400px]">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text" placeholder="Find a repository..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full py-2.5 pl-10 pr-3 text-sm rounded"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-            />
-          </div>
-          <FilterDropdown label="Type" options={['All', 'Public', 'Private']} value={typeFilter} onChange={setTypeFilter} />
-          <FilterDropdown label="Language" options={['All', ...languages]} value={langFilter} onChange={setLangFilter} />
-          <FilterDropdown label="Sort" options={['Recently updated', 'Name', 'Stars']} value={sortBy === 'updated' ? 'all' : sortBy} onChange={(v) => setSortBy(v === 'all' ? 'updated' : v)} />
-        </div>
-        <div className="flex gap-1 p-1 rounded" style={{ background: 'var(--color-surface)' }}>
-          <button
-            onClick={() => setView('grid')}
-            className="p-2 rounded cursor-pointer"
-            style={{ background: view === 'grid' ? 'var(--color-surface-hover)' : 'transparent', color: view === 'grid' ? 'var(--color-text)' : 'var(--color-text-muted)', border: 'none' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-          </button>
-          <button
-            onClick={() => setView('list')}
-            className="p-2 rounded cursor-pointer"
-            style={{ background: view === 'list' ? 'var(--color-surface-hover)' : 'transparent', color: view === 'list' ? 'var(--color-text)' : 'var(--color-text-muted)', border: 'none' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-              <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-              <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+        {!isLoading && !error && (
+          <>
+            {/* toolbar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 220, maxWidth: 360 }}>
+                <Icon.Search size={14} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--text-3)' }} />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name, topic, language…" style={{
+                  width: '100%', height: 36, padding: '0 12px 0 34px', background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', outline: 'none',
+                }} />
+              </div>
+              <Divider vertical style={{ height: 24 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{shown.length} of {total}</span>
+              <div style={{ marginLeft: 'auto' }}>
+                <Button variant="primary" size="md" icon={<Icon.Plus size={14} />} href="https://github.com/new">New</Button>
+              </div>
+            </div>
 
-      <div
-        className="flex flex-wrap gap-4 mb-6 px-5 py-4 rounded-lg"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      >
-        {langEntries.slice(0, 6).map(([lang, count]) => (
-          <div key={lang} className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: langColors[lang] || '#6e7681' }} />
-            {lang} {count}
-          </div>
-        ))}
-      </div>
-
-      <div
-        className={view === 'grid'
-          ? 'grid grid-cols-1 md:grid-cols-2 gap-4'
-          : 'flex flex-col gap-3'
-        }
-      >
-        {sorted.map((repo: Repository) => (
-          <div
-            key={repo.id}
-            className={`rounded-lg transition-all ${view === 'list' ? 'flex items-center gap-4 p-4' : 'p-5'}`}
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-          >
-            {view === 'list' ? (
-              <>
-                <div className="flex-1 min-w-0">
-                  <Link href={`https://github.com/${repo.fullName}`} className="text-lg font-semibold no-underline" style={{ color: 'var(--color-accent)' }} target="_blank" rel="noopener noreferrer">{repo.name}</Link>
-                  <span className="ml-2 text-xs px-2.5 py-1 rounded-full" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-surface-hover)' }}>{repo.isPrivate ? 'Private' : 'Public'}</span>
-                </div>
-                <p className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--color-text-secondary)' }}>{repo.description}</p>
-                <div className="flex gap-4 text-sm flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full" style={{ background: langColors[repo.language ?? ''] || '#6e7681' }} />
-                    {repo.language}
+            {/* language strip */}
+            {langs.length > 0 && (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: 11, color: 'var(--text-2)', flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 600 }}>Languages</span>
+                {langs.map((l) => (
+                  <span key={l.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <LangDot lang={l.name} /> {l.name} <span style={{ color: 'var(--text-3)' }}>{l.pct.toFixed(1)}%</span>
                   </span>
-                  <span>★ {repo.stargazersCount}</span>
-                  <span>⑂ {repo.forksCount}</span>
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Updated {formatRelativeTime(repo.pushedAt)}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-start justify-between mb-2">
-                  <Link href={`https://github.com/${repo.fullName}`} className="text-lg font-semibold no-underline" style={{ color: 'var(--color-accent)' }} target="_blank" rel="noopener noreferrer">{repo.name}</Link>
-                  <span className="ml-2 text-xs px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-surface-hover)' }}>{repo.isPrivate ? 'Private' : 'Public'}</span>
-                </div>
-                <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{repo.description}</p>
-                <div className="flex gap-5 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full" style={{ background: langColors[repo.language ?? ''] || '#6e7681' }} />
-                    {repo.language}
-                  </span>
-                  <span>★ {repo.stargazersCount}</span>
-                  <span>⑂ {repo.forksCount}</span>
-                </div>
-                <div className="mt-3 pt-3 text-xs" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-                  Updated {formatRelativeTime(repo.pushedAt)}
-                </div>
-              </>
+                ))}
+              </div>
             )}
-          </div>
-        ))}
+
+            {/* grid */}
+            {shown.length === 0 ? (
+              <Card padding={32} style={{ textAlign: 'center' }}>
+                <Icon.Repo size={24} style={{ color: 'var(--text-3)' }} />
+                <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>{total === 0 ? 'No repositories yet' : 'No matches'}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>{total === 0 ? 'Sync your GitHub to import repositories.' : 'Try a different search.'}</div>
+              </Card>
+            ) : (
+              <div className="gf-repo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, alignItems: 'stretch' }}>
+                {shown.map((r: Repository) => <RepoCard key={r.id} repo={r} />)}
+              </div>
+            )}
+          </>
+        )}
       </div>
-      {sorted.length === 0 && !isLoading && (
-        <div className="text-center py-16">
-          <p className="text-lg" style={{ color: 'var(--color-text-muted)' }}>No repositories match your filters.</p>
-        </div>
-      )}
-    </div>
+    </PageShell>
   )
 }

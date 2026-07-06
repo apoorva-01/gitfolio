@@ -1,257 +1,154 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { useRepositories } from '@/hooks/useRepositories'
-import { useProfileAnalysis } from '@/hooks/useAnalysis'
+import { useProfileAnalysis, useAnalyzProfile } from '@/hooks/useAnalysis'
+import { PageShell, TopNav } from '@/components/gf/AppShell'
+import { Card, Button, Icon, Avatar, Chip, LangDot, Divider, AIBadge } from '@/components/gf/primitives'
+import { Heatmap, LangBars } from '@/components/gf/charts'
+import { deriveLanguages } from '@/lib/gf-derive'
+import { SITE_HOST } from '@/lib/site'
+import { toast } from '@/components/ui/Toast'
 import type { Repository } from '@/store'
 
-const langColors: Record<string, string> = {
-  TypeScript: '#3178c6',
-  JavaScript: '#f1e05a',
-  Python: '#3572A5',
-  Rust: '#dea584',
-  Go: '#00ADD8',
-  Vue: '#41b883',
-  CSS: '#563d7c',
-  HTML: '#e34c26',
-  Ruby: '#701516',
-  Java: '#b07219',
-  Swift: '#ffac45',
-  Kotlin: '#A97BFF',
-  Dart: '#00B4AB',
-  Shell: '#89e051',
+function deriveHeatmap(repos: Repository[]): number[][] {
+  const grid: number[][] = Array.from({ length: 53 }, () => Array(7).fill(0))
+  const now = Date.now()
+  repos.forEach((r) => {
+    if (!r.pushedAt) return
+    const t = new Date(r.pushedAt).getTime()
+    const daysAgo = Math.floor((now - t) / 86400000)
+    if (daysAgo < 0 || daysAgo > 370) return
+    const weekIdx = 52 - Math.floor(daysAgo / 7)
+    if (weekIdx >= 0 && weekIdx < 53) grid[weekIdx][new Date(t).getDay()] += 2
+  })
+  return grid
+}
+
+function PinnedRepoCard({ repo }: { repo: Repository }) {
+  return (
+    <Card padding={16}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <Icon.Repo size={12} style={{ color: 'var(--text-3)' }} />
+        <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{repo.name}</span>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.45, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', minHeight: 36 }}>
+        {repo.description || <span style={{ color: 'var(--text-3)' }}>No description</span>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, fontSize: 11, color: 'var(--text-2)' }}>
+        {repo.language && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><LangDot lang={repo.language} />{repo.language}</span>}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon.Star size={11} />{(repo.stargazersCount || 0) > 999 ? ((repo.stargazersCount || 0) / 1000).toFixed(1) + 'k' : repo.stargazersCount || 0}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon.Fork size={11} />{repo.forksCount || 0}</span>
+      </div>
+    </Card>
+  )
 }
 
 export default function ProfilePage() {
   const { data: session } = useSession()
-  const { repos, isLoading } = useRepositories()
+  const { repos } = useRepositories()
   const { data: analysis } = useProfileAnalysis()
-  const router = useRouter()
+  const analyze = useAnalyzProfile()
+  const user = session?.user
+  const login = (user as { githubLogin?: string } | undefined)?.githubLogin
+  const name = user?.name || 'Your name'
 
-  const user = {
-    name: session?.user?.name || 'Alex Developer',
-    username: session?.user?.email?.split('@')[0] || 'alexdev',
-    bio: (analysis as any)?.profileBioSuggestion || 'Full-stack developer passionate about building developer tools and open source. Currently exploring Rust and systems programming.',
+  const pinned = [...repos].sort((a: Repository, b: Repository) => (b.stargazersCount || 0) - (a.stargazersCount || 0)).slice(0, 6)
+  const langs = deriveLanguages(repos, 6)
+  const heatmap = deriveHeatmap(repos)
+  const totalStars = repos.reduce((s: number, r: Repository) => s + (r.stargazersCount || 0), 0)
+
+  const aiBio = analysis?.profileBioSuggestion as string | undefined
+  const strengths = (analysis?.topStrengths as string[] | undefined) || []
+  const archetype = analysis?.developerArchetype as string | undefined
+
+  const regenerate = () => {
+    analyze.mutate(undefined, {
+      onSuccess: () => toast.success('Bio regenerated'),
+      onError: () => toast.error('Could not regenerate bio'),
+    })
   }
 
-  const stats = {
-    repos: repos.length,
-    stars: repos.reduce((s: number, r: Repository) => s + (r.stargazersCount || 0), 0),
-    followers: 892,
-    contributions: repos.reduce((s: number, r: Repository) => s + (r.healthScore || 0), 0),
-  }
-
-  const langDist = (analysis as any)?.languageDistribution ??
-    repos.reduce((acc: Record<string, number>, r: Repository) => {
-      if (r.language) acc[r.language] = (acc[r.language] || 0) + 1
-      return acc
-    }, {})
-
-  const langTotal = (Object.values(langDist) as number[]).reduce((s, v) => s + v, 0) || 1
-  const langEntries = (Object.entries(langDist) as [string, number][])
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 6)
-
-  const pinnedRepos = ((analysis as any)?.pinnedRepoRecommendations || repos.slice(0, 2)) as Repository[]
+  const topNav = (
+    <TopNav title="Profile" subtitle={login ? `What visitors see at ${SITE_HOST}/${login}` : 'Your public GitFolio'} actions={
+      <>
+        {login && <Button variant="secondary" size="sm" icon={<Icon.Eye size={13} />} href={`/pub/${login}`}>Public preview</Button>}
+        <Button variant="ai" size="sm" icon={<Icon.Sparkle size={12} />} disabled={analyze.isPending} onClick={regenerate}>{analyze.isPending ? 'Regenerating…' : 'Regenerate bio'}</Button>
+      </>
+    } />
+  )
 
   return (
-    <div className="py-8">
-      <div className="flex gap-6 mb-8 pb-8" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <div
-          className="w-[120px] h-[120px] rounded-full flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, var(--color-accent), var(--color-success))' }}
-        />
-        <div className="flex-1">
-          <h1 className="text-[28px] font-bold mb-1" style={{ color: 'var(--color-text)' }}>{user.name}</h1>
-          <div className="text-lg mb-4" style={{ color: 'var(--color-text-secondary)' }}>@{user.username}</div>
-          <p className="text-base mb-4 leading-relaxed" style={{ color: 'var(--color-text)' }}>
-            {user.bio}
-          </p>
-          <div className="flex flex-wrap gap-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            <span className="flex items-center gap-1.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-              </svg>
-              San Francisco, CA
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-              </svg>
-              {session?.user?.email || 'alex@developer.io'}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
-              </svg>
-              LinkedIn
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-              github.com/{user.username}
-            </span>
+    <PageShell topNav={topNav}>
+      <div className="gf-profile-grid" style={{ padding: 24, display: 'grid', gridTemplateColumns: '320px 1fr', gap: 24 }}>
+        {/* left */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <Avatar src={user?.image} name={name} size={200} ring />
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, color: 'var(--text)' }}>{name}</div>
+            {login && <div className="mono" style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>@{login}</div>}
           </div>
-          <div className="flex gap-3 mt-5">
-            <button
-              onClick={() => router.push('/settings')}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded text-sm font-medium cursor-pointer transition-all"
-              style={{ background: '#238636', color: 'white', border: '1px solid transparent' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Edit Profile
-            </button>
-            <a
-              href={`/pub/${user.username}`}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded text-sm font-medium no-underline transition-all"
-              style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
-              View Public Page
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="flex gap-8 px-6 py-5 rounded-lg mb-8"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      >
-        {[
-          { value: String(stats.repos), label: 'Repositories' },
-          { value: String(stats.stars), label: 'Total Stars' },
-          { value: String(stats.followers), label: 'Followers' },
-          { value: String(stats.contributions), label: 'Contributions' },
-        ].map((s) => (
-          <div key={s.label} className="text-center">
-            <div className="text-2xl font-bold" style={{ color: 'var(--color-accent)' }}>{s.value}</div>
-            <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div
-        className="rounded-lg p-6 mb-8"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      >
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>{String(stats.contributions)} contributions in the last year</h2>
-          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            <span>Less</span>
-            {['var(--color-surface-hover)', '#0e4429', '#006d32', '#26a641', '#39d353'].map((c) => (
-              <div key={c} className="w-3 h-3 rounded-sm" style={{ background: c }} />
-            ))}
-            <span>More</span>
-          </div>
-        </div>
-        <div className="flex gap-0.5 overflow-x-auto pb-2">
-          {Array.from({ length: 52 }).map((_, w) => (
-            <div key={w} className="flex flex-col gap-0.5">
-              {Array.from({ length: 7 }).map((_, d) => (
-                <div
-                  key={d}
-                  className="w-3 h-3 rounded-sm"
-                  style={{
-                    background: Math.random() > 0.5
-                      ? ['var(--color-surface-hover)', '#0e4429', '#006d32', '#26a641', '#39d353'][Math.floor(Math.random() * 5)]
-                      : 'var(--color-surface-hover)',
-                  }}
-                />
-              ))}
+          <div style={{ position: 'relative' }}>
+            <AIBadge style={{ position: 'absolute', top: -8, right: 0 }}>{aiBio ? 'AI bio' : 'Draft'}</AIBadge>
+            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, padding: '12px 14px', background: 'var(--surface)', border: '1px solid color-mix(in oklab, var(--ai) 18%, var(--border))', borderRadius: 10 }}>
+              {aiBio
+                || (langs[0]
+                  ? `Ships across ${langs.length} languages — most active in ${langs[0].name}. ${repos.length} public repos, ${totalStars.toLocaleString()} stars earned.`
+                  : 'Sync your repositories, then regenerate your AI bio from your real work.')}
             </div>
-          ))}
-        </div>
-      </div>
-
-      <h2 className="text-xl font-semibold mb-5 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        Pinned Repositories
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        {pinnedRepos.map((repo) => (
-          <div
-            key={repo.name}
-            className="p-5 rounded-lg transition-all"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-          >
-            <div className="flex justify-between items-start mb-2">
-              <a href="#" className="text-lg font-semibold no-underline" style={{ color: 'var(--color-accent)' }}>{repo.name}</a>
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: 'var(--color-text-muted)', background: 'var(--color-surface-hover)' }}>Public</span>
-            </div>
-            <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{repo.description}</p>
-            <div className="flex gap-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ background: langColors[repo.language || ''] || '#6e7681' }} />
-                {repo.language}
-              </span>
-              <span>★ {repo.stargazersCount}</span>
-              <span>⑂ {repo.forksCount}</span>
-            </div>
+            {!aiBio && repos.length > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>Heuristic draft — click “Regenerate bio” for a Claude-written version.</div>
+            )}
           </div>
-        ))}
-      </div>
-
-      <h2 className="text-xl font-semibold mb-5 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-        </svg>
-        Contact
-      </h2>
-      <div
-        className="rounded-lg p-6"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      >
-        <div className="flex flex-wrap gap-3">
-          {['GitHub', 'LinkedIn', 'Twitter', 'Email'].map((link) => (
-            <a
-              key={link}
-              href={link === 'GitHub' ? `https://github.com/${user.username}` : '#'}
-              className="flex items-center gap-2 px-4 py-2 rounded text-sm no-underline transition-all"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                {link === 'GitHub' && <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>}
-                {link === 'LinkedIn' && <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>}
-                {link === 'Twitter' && <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>}
-              </svg>
-              {link}
-            </a>
-          ))}
-        </div>
-      </div>
-
-      <h2 className="text-xl font-semibold mb-5 mt-8 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-        </svg>
-        Top Languages
-      </h2>
-      <div
-        className="rounded-lg p-6"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      >
-        <div className="flex h-2.5 rounded-full overflow-hidden mb-4">
-          {langEntries.map(([lang, count]) => (
-            <div key={lang} className="h-full" style={{ background: langColors[lang] || '#6e7681', flex: count }} />
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {langEntries.map(([lang, count]) => (
-            <div key={lang} className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              <span className="w-3 h-3 rounded-full" style={{ background: langColors[lang] || '#6e7681' }} />
-              {lang} {Math.round((count / langTotal) * 100)}%
+          {archetype && (
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Developer archetype</div>
+              <Chip color="var(--ai)" dot>{archetype}</Chip>
             </div>
-          ))}
+          )}
+          {strengths.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Top strengths</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {strengths.slice(0, 5).map((s) => <Chip key={s} color="var(--accent)">{s}</Chip>)}
+              </div>
+            </div>
+          )}
+          {login && <Button variant="surface" size="md" fullWidth icon={<Icon.Github size={13} />} href={`https://github.com/${login}`}>View on GitHub</Button>}
+          <Divider />
+          <div style={{ display: 'flex', gap: 24, fontSize: 13 }}>
+            <span><b style={{ color: 'var(--text)' }}>{repos.length}</b> <span style={{ color: 'var(--text-3)' }}>repos</span></span>
+            <span><b style={{ color: 'var(--text)' }}>{totalStars.toLocaleString()}</b> <span style={{ color: 'var(--text-3)' }}>stars</span></span>
+          </div>
+        </div>
+
+        {/* right */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Pinned</h2>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{pinned.length} of 6</span>
+              </div>
+            </div>
+            {pinned.length ? (
+              <div className="gf-pinned-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {pinned.map((r: Repository) => <PinnedRepoCard key={r.id} repo={r} />)}
+              </div>
+            ) : <Card padding={20}><span style={{ fontSize: 13, color: 'var(--text-3)' }}>No repositories to pin yet.</span></Card>}
+          </div>
+
+          <Card>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Contribution activity</div>
+            <Heatmap data={heatmap} cell={11} gap={3} showLegend={false} />
+          </Card>
+
+          <Card>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Top languages</div>
+            {langs.length ? <LangBars data={langs} /> : <div style={{ fontSize: 13, color: 'var(--text-3)' }}>No language data yet.</div>}
+          </Card>
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

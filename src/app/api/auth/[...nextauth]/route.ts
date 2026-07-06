@@ -33,7 +33,7 @@ export const authOptions: AuthOptions = {
             githubAccessToken: encryptedToken,
           },
           update: {
-            name: user.name || githubUser.name || githubUser.login,
+            // name is user-editable (Settings) — do not overwrite it on re-login
             image: user.image || githubUser.avatar_url,
             githubLogin: githubUser.login,
             githubAccessToken: encryptedToken,
@@ -42,23 +42,38 @@ export const authOptions: AuthOptions = {
       }
       return true
     },
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile, trigger }) {
       if (account) {
         token.accessToken = account.access_token
         token.githubLogin = (profile as { login: string })?.login
+      }
+      // Attach the stable DB id + name to the token so the session needs zero per-request DB reads.
+      // Reads the DB only at sign-in (or once for pre-existing tokens missing id), and on an explicit
+      // session.update() after a profile edit — never on a normal authenticated request.
+      if (!token.id && token.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email },
+          select: { id: true, name: true, githubLogin: true },
+        })
+        if (dbUser) {
+          token.id = dbUser.id
+          token.name = dbUser.name
+          token.githubLogin = token.githubLogin ?? dbUser.githubLogin
+        }
+      } else if (trigger === 'update' && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true },
+        })
+        if (dbUser) token.name = dbUser.name
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: session.user.email! },
-        })
-        if (dbUser) {
-          (session.user as { id: string; githubLogin: string }).id = dbUser.id
-          ;(session.user as { id: string; githubLogin: string }).githubLogin = dbUser.githubLogin
-          if (dbUser.name) session.user.name = dbUser.name
-        }
+        (session.user as { id?: string; githubLogin?: string }).id = token.id as string
+        ;(session.user as { id?: string; githubLogin?: string }).githubLogin = token.githubLogin as string
+        if (token.name) session.user.name = token.name as string
       }
       return session
     },

@@ -115,6 +115,36 @@ function QuickAction({ icon, title, body, badge, onClick, href }: { icon: IconNa
   return href ? <Link href={href} style={style}>{inner}</Link> : <button onClick={onClick} style={{ ...style, border: 'none', background: 'transparent', font: 'inherit', textAlign: 'left', width: '100%' }}>{inner}</button>
 }
 
+function Sk({ w, h = 16, r = 8 }: { w?: number | string; h?: number; r?: number }) {
+  return <div className="gf-skeleton" style={{ width: w ?? '100%', height: h, borderRadius: r }} />
+}
+
+function DashboardSkeleton() {
+  return (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <Sk w={48} h={48} r={24} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}><Sk w={220} h={20} /><Sk w={300} h={14} /></div>
+      </div>
+      <div className="gf-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} padding={20}><Sk w={34} h={34} r={8} /><div style={{ height: 14 }} /><Sk w={80} h={11} /><div style={{ height: 8 }} /><Sk w={110} h={28} /></Card>
+        ))}
+      </div>
+      <div className="gf-dash-grid" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <Card><Sk w={160} h={14} /><div style={{ height: 18 }} /><Sk h={128} /></Card>
+          <Card><Sk w={140} h={14} /><div style={{ height: 18 }} /><Sk h={96} /></Card>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <Card><Sk w={100} h={14} /><div style={{ height: 14 }} /><Sk h={72} /><div style={{ height: 10 }} /><Sk h={72} /></Card>
+          <Card><Sk w={110} h={14} /><div style={{ height: 14 }} /><Sk h={128} /></Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function InsightCard({ insight, source }: { insight: Insight; source: string }) {
   return (
     <Card padding={16} style={{ borderColor: 'color-mix(in oklab, var(--ai) 25%, var(--border))', background: 'linear-gradient(135deg, var(--ai-soft) 0%, transparent 50%)' }}>
@@ -164,7 +194,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <PageShell topNav={<TopNav title="Dashboard" subtitle="Overview of your GitFolio" />}>
-        <div style={{ padding: 24, color: 'var(--text-3)' }}>Loading your dashboard…</div>
+        <DashboardSkeleton />
       </PageShell>
     )
   }

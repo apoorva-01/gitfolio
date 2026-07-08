@@ -35,6 +35,22 @@ interface GitHubProfile {
   created_at: string
 }
 
+interface ContributedRepo {
+  nameWithOwner: string
+  url: string
+  description: string | null
+  stargazerCount: number
+  isPrivate: boolean
+  primaryLanguage: { name: string } | null
+}
+
+export interface GitHubActivity {
+  lastYear: { commits: number; pullRequests: number; issues: number; reviews: number; privateContributions: number }
+  allTime: { mergedPullRequests: number; issues: number; discussionAnswers: number }
+  contributedReposCount: number
+  contributedRepos: { nameWithOwner: string; url: string; description: string | null; stars: number; language: string | null }[]
+}
+
 export class GitHubClient {
   private octokit: Octokit
 
@@ -167,6 +183,61 @@ export class GitHubClient {
       return data
     } catch {
       return []
+    }
+  }
+
+  async getActivitySummary(username: string): Promise<GitHubActivity | null> {
+    try {
+      const response = await this.octokit.graphql({
+        query: `query($login: String!) {
+          user(login: $login) {
+            contributionsCollection {
+              totalCommitContributions
+              totalPullRequestContributions
+              totalIssueContributions
+              totalPullRequestReviewContributions
+              restrictedContributionsCount
+            }
+            repositoriesContributedTo(first: 12, privacy: PUBLIC, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST, ISSUE, PULL_REQUEST_REVIEW], orderBy: { field: STARGAZERS, direction: DESC }) {
+              totalCount
+              nodes { nameWithOwner url description stargazerCount isPrivate primaryLanguage { name } }
+            }
+            repositoryDiscussionComments(onlyAnswers: true) { totalCount }
+            pullRequests(states: MERGED) { totalCount }
+            issues { totalCount }
+          }
+        }`,
+        login: username,
+      })
+      const u = (response as any).user
+      const c = u.contributionsCollection
+      return {
+        lastYear: {
+          commits: c.totalCommitContributions,
+          pullRequests: c.totalPullRequestContributions,
+          issues: c.totalIssueContributions,
+          reviews: c.totalPullRequestReviewContributions,
+          privateContributions: c.restrictedContributionsCount,
+        },
+        allTime: {
+          mergedPullRequests: u.pullRequests.totalCount,
+          issues: u.issues.totalCount,
+          discussionAnswers: u.repositoryDiscussionComments.totalCount,
+        },
+        contributedReposCount: u.repositoriesContributedTo.totalCount,
+        // Defensive: privacy:PUBLIC already excludes private repos, but never publish a private name.
+        contributedRepos: (u.repositoriesContributedTo.nodes as ContributedRepo[])
+          .filter((n) => !n.isPrivate)
+          .map((n) => ({
+            nameWithOwner: n.nameWithOwner,
+            url: n.url,
+            description: n.description,
+            stars: n.stargazerCount,
+            language: n.primaryLanguage?.name || null,
+          })),
+      }
+    } catch {
+      return null
     }
   }
 

@@ -164,7 +164,8 @@ export default function DashboardPage() {
   const { repos, total, isLoading, error } = useRepositories()
   const { data: session } = useSession()
   const { data: analysis } = useProfileAnalysis()
-  const { data: contributions } = useContributions()
+  const { data: githubStats } = useContributions()
+  const contributions = githubStats?.contributions || []
   const analyze = useAnalyzProfile()
   const sync = useSyncRepos()
   const user = session?.user

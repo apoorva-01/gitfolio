@@ -194,11 +194,12 @@ export async function POST() {
 
     console.log(`[Sync] Complete: ${totalSynced} synced (${totalSkipped} unchanged), ${totalFailed} failed in ${Date.now() - startTime}ms`)
 
-    // Profile + contribution calendar (2 API calls). Never touches bio/name — those are user-editable.
+    // Profile + contribution calendar + activity summary (3 API calls). Never touches bio/name — user-editable.
     try {
-      const [profile, contributions] = await Promise.all([
+      const [profile, contributions, activity] = await Promise.all([
         github.getUserProfile(),
         github.getContributionCalendar(user.githubLogin),
+        github.getActivitySummary(user.githubLogin),
       ])
       await prisma.user.update({
         where: { id: userId },
@@ -211,10 +212,11 @@ export async function POST() {
           twitterUsername: profile.twitter_username,
           githubCreatedAt: profile.created_at ? new Date(profile.created_at) : null,
           contributions: contributions as any,
+          activity: activity as any,
         },
       })
     } catch (e) {
-      console.error('[Sync] Profile/calendar fetch failed:', e)
+      console.error('[Sync] Profile/calendar/activity fetch failed:', e)
     }
 
     // Snapshot for historical deltas (one row per sync).

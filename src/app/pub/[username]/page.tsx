@@ -4,7 +4,9 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import { Logo, Card, Button, Icon, Avatar, Chip, LangDot, Divider } from '@/components/gf/primitives'
 import { Heatmap, LangBars } from '@/components/gf/charts'
+import { ActivitySummary } from '@/components/gf/ActivitySummary'
 import { deriveLanguages, contributionsToGrid, contributionsTotal, type ContribDay } from '@/lib/gf-derive'
+import type { GitHubActivity } from '@/lib/github'
 import type { Repository as StoreRepository } from '@/store'
 import { ShareButton } from './ShareButton'
 
@@ -13,7 +15,7 @@ async function getProfile(username: string) {
     where: { githubLogin: username },
     select: {
       name: true, bio: true, image: true, githubLogin: true,
-      followers: true, location: true, company: true, blog: true, twitterUsername: true, contributions: true,
+      followers: true, location: true, company: true, blog: true, twitterUsername: true, contributions: true, activity: true,
     },
   })
   if (!user) return null
@@ -56,6 +58,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const name = user.name || username
   const langs = deriveLanguages(repos as unknown as StoreRepository[], 6)
   const contribDays = (user.contributions as ContribDay[] | null) || []
+  const activity = user.activity as GitHubActivity | null
   const hasRealContribs = contribDays.length > 0
   const heatmap = hasRealContribs ? contributionsToGrid(contribDays) : deriveHeatmap(repos)
   const totalStars = repos.reduce((s, r) => s + (r.stargazersCount || 0), 0)
@@ -150,6 +153,15 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   </a>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* open source */}
+          {activity && (activity.contributedReposCount > 0 || activity.allTime.discussionAnswers > 0) && (
+            <section>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>Open source</h2>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 14px' }}>Contributions beyond {name.split(' ')[0]}’s own repositories</div>
+              <ActivitySummary activity={activity} />
             </section>
           )}
 

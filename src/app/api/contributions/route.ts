@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   const userId = (session.user as { id: string }).id
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { contributions: true } })
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { contributions: true, activity: true } })
 
-  return NextResponse.json({ contributions: user?.contributions || [] })
+  return NextResponse.json({ contributions: user?.contributions || [], activity: user?.activity || null })
 }

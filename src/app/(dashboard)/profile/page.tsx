@@ -7,6 +7,7 @@ import { useContributions } from '@/hooks/useContributions'
 import { PageShell, TopNav } from '@/components/gf/AppShell'
 import { Card, Button, Icon, Avatar, Chip, LangDot, Divider, AIBadge } from '@/components/gf/primitives'
 import { Heatmap, LangBars } from '@/components/gf/charts'
+import { ActivitySummary } from '@/components/gf/ActivitySummary'
 import { deriveLanguages, contributionsToGrid, contributionsTotal } from '@/lib/gf-derive'
 import { SITE_HOST } from '@/lib/site'
 import { toast } from '@/components/ui/Toast'
@@ -49,7 +50,9 @@ export default function ProfilePage() {
   const { data: session } = useSession()
   const { repos } = useRepositories()
   const { data: analysis } = useProfileAnalysis()
-  const { data: contributions } = useContributions()
+  const { data: githubStats } = useContributions()
+  const contributions = githubStats?.contributions || []
+  const activity = githubStats?.activity || null
   const analyze = useAnalyzProfile()
   const user = session?.user
   const login = (user as { githubLogin?: string } | undefined)?.githubLogin
@@ -140,6 +143,16 @@ export default function ProfilePage() {
               </div>
             ) : <Card padding={20}><span style={{ fontSize: 13, color: 'var(--text-3)' }}>No repositories to pin yet.</span></Card>}
           </div>
+
+          {activity && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Open source</h2>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Contributions beyond your own repos</span>
+              </div>
+              <ActivitySummary activity={activity} />
+            </div>
+          )}
 
           <Card>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Contribution activity</div>
